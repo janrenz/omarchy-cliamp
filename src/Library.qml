@@ -1413,7 +1413,7 @@ BorderSurface {
 
                 Text {
                   width: parent.width
-                  text: "An overlay sits above everything and closes when you click away from it. A normal window is one Hyprland tiles and keeps on its workspace \u2014 opening it again focuses the one you have rather than making a second. Switching reopens the window. The bar can show what is playing or just the spectrum."
+                  text: "An overlay sits above everything and closes when you click away from it. A normal window is one Hyprland tiles and keeps on its workspace \u2014 opening it again focuses the one you have rather than making a second. Switching reopens the window. The bar can show what is playing or just the spectrum — with the title gone, clicking it plays and pauses, and the card comes up while you rest on it."
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption

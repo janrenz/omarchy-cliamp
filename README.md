@@ -32,8 +32,13 @@ In the bar, playing and paused — the same five bars, morphed:
 
 - **Bar widget** — the track title, scrolling, with cliamp's spectrum beside it.
   Paused morphs the spectrum into a pause glyph rather than swapping in a
-  different icon. Click opens the library; middle-click skips; the wheel moves
-  through the queue; right-click keeps the small MPRIS popup.
+  different icon. A click brings up a card with the track, the transport and the
+  two ways on — the library window and its settings. Middle-click skips; the
+  wheel moves through the queue.
+- **Or just the spectrum** — Settings → **Spectrum only** drops the title, leaving five
+  bars and a tenth of the width. The title then comes back while the pointer
+  rests there, and the card with it, because the click belongs to what you can
+  see: it plays and pauses. Right-click opens the card at once, in either shape.
 - **Library window** — radio, podcasts, live radio worldwide, your files, the
   queue, history, settings. Keyboard-first, mouse-complete, with a breadcrumb
   that says where a drilled-in list came from and gets you back in one click.
@@ -117,8 +122,8 @@ beyond the widget entry that `omarchy plugin enable` and `remove` manage.
 By default the library is a floating overlay: it sits above everything and
 closes when you click away from it. Settings → **Window** switches it to an
 ordinary window instead — one Hyprland tiles, keeps on its workspace, and leaves
-open beside your terminal. In that shape, clicking the bar widget again focuses
-the window you already have rather than opening a second one.
+open beside your terminal. In that shape, asking for the window again focuses
+the one you already have rather than opening a second one.
 
 ## One socket
 

@@ -17,7 +17,7 @@
   },
   "barWidget": {
     "displayName": "cliamp",
-    "description": "Now playing with cliamp's spectrum; click opens the library window.",
+    "description": "Now playing with cliamp's spectrum. A click brings up the card with the track, the transport and the way into the library; with the title hidden the click plays and pauses instead, and the card comes up while the pointer rests there.",
     "category": "Media",
     "aliases": [
       "cliamp",
