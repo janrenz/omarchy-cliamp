@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "janrenz.omarchy.cliamp",
+  "name": "cliamp",
+  "version": "0.1.0",
+  "author": "Jan Renz",
+  "license": "MIT",
+  "description": "A window for cliamp, the terminal music player: radio, podcasts, public-broadcaster catalogues and your queue, with cliamp's own spectrum in the bar. Starts cliamp headless when it is not already running, so the bar works whether or not a terminal player is open. Needs cliamp on PATH and nothing else.",
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "src/Service.qml",
+    "barWidget": "src/BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "cliamp",
+    "description": "Now playing with cliamp's spectrum; click opens the library window.",
+    "category": "Media",
+    "aliases": [
+      "cliamp",
+      "music",
+      "radio",
+      "podcast",
+      "media",
+      "player"
+    ],
+    "allowMultiple": false,
+    "defaultSection": "left"
+  }
+}
