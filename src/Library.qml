@@ -1046,7 +1046,11 @@ BorderSurface {
 
             Text {
               anchors.horizontalCenter: parent.horizontalCenter
-              text: root.error ? "󰅖" : "󰝟"
+              text: root.error ? "󰅖"
+                  : root.section === "favorites" ? "󰓒"
+                  : root.section === "queue" ? "󰲹"
+                  : root.section === "history" ? "󰄉"
+                  : root.section === "local" ? "󰉋" : "󰝚"
               color: root.subdued
               font.family: root.fontFamily
               font.pixelSize: Style.font.displayLarge
@@ -1056,10 +1060,15 @@ BorderSurface {
             Text {
               anchors.horizontalCenter: parent.horizontalCenter
               text: root.error ? root.error
-                  : root.section === "queue" ? "The queue is empty — play something from Radio or Broadcast."
-                  : root.section === "local" ? "No saved playlists yet. cliamp's `playlist` command creates them."
                   : root.filter ? "Nothing matches this filter."
+                  : root.section === "favorites" ? "Nothing starred yet. Press f on a station, a show or an episode and it lands here."
+                  : root.section === "queue" ? "The queue is empty. Play something from Radio or Broadcast."
+                  : root.section === "history" ? "Nothing played yet."
+                  : root.section === "local" ? "No saved playlists yet. cliamp's playlist command makes them."
                   : "Nothing here yet. Press / to search."
+              width: Math.min(Style.space(420), parent.parent.width - Style.space(60))
+              horizontalAlignment: Text.AlignHCenter
+              wrapMode: Text.WordWrap
               color: root.subdued
               font.family: root.fontFamily
               font.pixelSize: Style.font.body

@@ -37,8 +37,28 @@ BarWidget {
       : (mprisMedia ? (activePlayer.trackArtist || "") : "")
 
   property bool popupOpen: false
+  property bool hovered: false
+
+  // Nur das Spektrum in der Leiste: dann ist der Titel nichts, was dauerhaft
+  // Platz kostet — er kommt beim Überfahren dazu, und der Klick gehört dem
+  // Abspielen statt dem Fenster. Wer den Titel stehen lässt, bekommt das
+  // gewohnte Verhalten.
+  readonly property bool spectrumOnly: !prefs.showTitle
+  readonly property bool titelSichtbar: !root.bar.vertical
+      && root.title !== ""
+      && (prefs.showTitle || root.hovered)
 
   function close() { popupOpen = false }
+
+  function playPause() {
+    if (cliamp.connected) {
+      cliamp.playPause()
+      return
+    }
+    if (root.mediaService && root.activePlayer) {
+      root.mediaService.runAction("playPause", false, root.mediaService.playerKey(root.activePlayer))
+    }
+  }
 
   // cliamp's IPC client and the full app window both live here so the bar
   // widget is the single entry point: click opens the app, right-click keeps
@@ -126,11 +146,19 @@ BarWidget {
 
     Item {
       id: scrollClip
-      width: Math.min(root.maxLabelWidth, labelText.implicitWidth)
+      // Im Spektrum-Modus wächst die Breite beim Überfahren von 0 auf den
+      // Titel und wieder zurück. Über die Breite statt über visible, damit die
+      // Leiste sich nicht ruckartig umbaut — und damit der Titel nicht
+      // erscheint, bevor Platz für ihn da ist.
+      width: root.titelSichtbar ? Math.min(root.maxLabelWidth, labelText.implicitWidth) : 0
       height: glyph.height
       clip: true
       anchors.verticalCenter: parent.verticalCenter
-      visible: !root.bar.vertical && root.title !== "" && prefs.showTitle
+      visible: width > 0
+
+      Behavior on width {
+        NumberAnimation { duration: 170; easing.type: Easing.OutCubic }
+      }
 
       Text {
         id: labelText
@@ -168,23 +196,43 @@ BarWidget {
 
     onClicked: function(mouse) {
       if (mouse.button === Qt.LeftButton) {
-        app.toggle()
+        // Spektrum allein: der Klick liegt auf dem, was man sieht — den
+        // tanzenden Balken — und die tun das Naheliegende. Steht der Titel da,
+        // führt der Klick weiter ins Programm.
+        if (root.spectrumOnly) root.playPause()
+        else root.popupOpen = !root.popupOpen
         return
       }
-      if (!root.activePlayer) return
       if (mouse.button === Qt.MiddleButton) {
-        if (root.mediaService) root.mediaService.runAction("next", false)
+        if (root.activePlayer && root.mediaService) root.mediaService.runAction("next", false)
+        else if (cliamp.connected) cliamp.next()
       } else if (mouse.button === Qt.RightButton) {
+        // Im Spektrum-Modus der einzige Weg zur Übersicht, deshalb immer
+        // erreichbar — auch ohne MPRIS-Spieler.
         root.popupOpen = !root.popupOpen
       }
     }
     onWheel: function(wheel) {
-      if (!root.activePlayer) return
-      if (wheel.angleDelta.y > 0 && root.mediaService) root.mediaService.runAction("previous", false)
-      else if (wheel.angleDelta.y < 0 && root.mediaService) root.mediaService.runAction("next", false)
+      const vor = wheel.angleDelta.y < 0
+      if (root.activePlayer && root.mediaService) {
+        root.mediaService.runAction(vor ? "next" : "previous", false)
+      } else if (cliamp.connected) {
+        if (vor) cliamp.next()
+        else cliamp.previous()
+      }
     }
-    onEntered: if (root.bar) root.bar.showTooltip(root, root.hasMedia ? (root.title + (root.artist ? " — " + root.artist : "")) : "")
-    onExited: if (root.bar) root.bar.hideTooltip(root)
+    onEntered: {
+      root.hovered = true
+      // Im Spektrum-Modus steht der Titel jetzt in der Leiste selbst — eine
+      // Sprechblase mit demselben Text daneben wäre doppelt.
+      if (root.bar && !root.spectrumOnly) {
+        root.bar.showTooltip(root, root.hasMedia ? (root.title + (root.artist ? " — " + root.artist : "")) : "")
+      }
+    }
+    onExited: {
+      root.hovered = false
+      if (root.bar) root.bar.hideTooltip(root)
+    }
   }
 
   PopupCard {
@@ -269,6 +317,40 @@ BarWidget {
           }
         }
       }
+
+      // Die Wege weiter. Sie stehen oben bei den Angaben statt unten hinter
+      // der Quellenliste: wer den Popover öffnet, will meistens genau hierhin,
+      // und hinter einer langen Liste fände er sie nicht.
+      Row {
+        width: parent.width
+        spacing: Style.space(6)
+
+        Button {
+          iconText: "󰐊"
+          label: "Fenster öffnen"
+          foreground: root.bar.foreground
+          horizontalPadding: Style.spacing.controlPaddingX
+          verticalPadding: Style.spacing.controlPaddingY
+          onClicked: {
+            root.popupOpen = false
+            app.open()
+          }
+        }
+
+        Button {
+          iconText: "󰒓"
+          label: "Einstellungen"
+          foreground: root.bar.foreground
+          horizontalPadding: Style.spacing.controlPaddingX
+          verticalPadding: Style.spacing.controlPaddingY
+          onClicked: {
+            root.popupOpen = false
+            app.openAt("settings")
+          }
+        }
+      }
+
+      PanelSeparator { foreground: root.bar.foreground }
 
       Row {
         anchors.horizontalCenter: parent.horizontalCenter

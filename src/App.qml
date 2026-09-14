@@ -43,6 +43,26 @@ Item {
 
   function close() { root.opened = false }
 
+  // Welcher Bereich beim nächsten Öffnen zuerst steht. Leer heißt: der übliche.
+  // Wird beim Aufbau der Library wieder geleert, sonst landete jedes spätere
+  // Öffnen dort, wo man einmal hin wollte.
+  property string startSection: ""
+
+  function openAt(section) {
+    root.startSection = section || ""
+    // Steht das Fenster schon, wechselt der Bereich sofort — sonst passiert auf
+    // den Klick nichts Sichtbares, weil open() nur ein offenes Fenster fokussiert.
+    if (root.opened && root.library) {
+      root.library.selectSection(section)
+      root.startSection = ""
+    }
+    root.open()
+  }
+
+  // Die gerade gebaute Library, damit openAt() sie erreicht. Es gibt immer nur
+  // eine: Overlay und Fenster schließen sich gegenseitig aus.
+  property var library: null
+
   function toggle() {
     if (!root.overlayMode && root.opened) {
       root.focusToplevel()
@@ -94,6 +114,15 @@ Item {
         root.opened = false
         reopenTimer.restart()
       }
+
+      Component.onCompleted: {
+        root.library = this
+        if (root.startSection) {
+          selectSection(root.startSection)
+          root.startSection = ""
+        }
+      }
+      Component.onDestruction: if (root.library === this) root.library = null
     }
   }
 
