@@ -14,6 +14,10 @@ Item {
   // Hyprland tiles, moves between workspaces, and keeps until it is closed.
   property string windowMode: "overlay"
 
+  // Whether the bar widget spells out what is playing. Off leaves the
+  // spectrum and nothing else — the same information, a tenth of the width.
+  property bool showTitle: true
+
   readonly property string directory: Quickshell.env("HOME") + "/.local/state/omarchy/cliamp-media"
   readonly property string path: root.directory + "/settings.json"
 
@@ -21,6 +25,12 @@ Item {
     if (mode !== "overlay" && mode !== "window") return
     if (mode === root.windowMode) return
     root.windowMode = mode
+    root.save()
+  }
+
+  function setShowTitle(on) {
+    if (on === root.showTitle) return
+    root.showTitle = on === true
     root.save()
   }
 
@@ -33,10 +43,11 @@ Item {
     }
     var mode = parsed && parsed.windowMode
     root.windowMode = (mode === "window" || mode === "overlay") ? mode : "overlay"
+    root.showTitle = !parsed || parsed.showTitle !== false
   }
 
   function save() {
-    file.setText(JSON.stringify({version: 1, windowMode: root.windowMode}, null, 2) + "\n")
+    file.setText(JSON.stringify({version: 1, windowMode: root.windowMode, showTitle: root.showTitle}, null, 2) + "\n")
   }
 
   Component.onCompleted: mkdirProc.running = true

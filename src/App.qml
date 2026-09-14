@@ -1,7 +1,6 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import Quickshell.Hyprland
 import Quickshell.Wayland
 import qs.Commons
 import qs.Ui
@@ -24,8 +23,9 @@ Item {
 
   property QtObject bar: null
   property var cliamp: null
+  property var prefs: null
 
-  readonly property string windowMode: prefs.windowMode
+  readonly property string windowMode: root.prefs ? root.prefs.windowMode : "overlay"
   readonly property bool overlayMode: root.windowMode === "overlay"
   readonly property string windowTitle: "cliamp"
 
@@ -54,38 +54,26 @@ Item {
   // Matched on the title because a client cannot ask which toplevel is its own.
   // It is this file's own string rather than a guess at somebody else's window,
   // so the match is exact and stays exact.
+  //
+  // Through hyprctl rather than Quickshell's Hyprland.dispatch: the same
+  // expression that focuses the window from a shell did nothing through the
+  // module, and a focus request that silently does nothing is worse than a
+  // process spawn.
   function focusToplevel() {
-    // Ask through Wayland first: the compositor owns focus policy, and
-    // requestActivate is the one route that does not need to know which
-    // compositor this is.
-    stacked.requestActivate()
-
-    Hyprland.refreshToplevels()
-    var all = Hyprland.toplevels ? Hyprland.toplevels.values : []
-    for (var i = 0; i < all.length; i++) {
-      if (all[i] && String(all[i].title) === root.windowTitle) {
-        root.dispatchFocus(all[i])
-        return
-      }
-    }
+    focusProc.running = true
   }
 
-  function dispatchFocus(toplevel) {
-    var matcher = "address:0x" + toplevel.address
+  Process {
+    id: focusProc
     // Two syntaxes, because this plugin is not installed on one machine only.
-    // Current Hyprland takes a Lua expression and rejects the classic string
-    // form outright - `focuswindow address:0x...` comes back "')' expected
-    // near 'address'" - while the releases before it take only the string. An
-    // unset usingLua means a Quickshell that does not report it, and the Lua
-    // form is the one current Hyprland accepts, so that is the default.
-    Hyprland.dispatch(Hyprland.usingLua === false
-                      ? "focuswindow " + matcher
-                      : "hl.dsp.focus({ window = '" + matcher + "' })")
+    // Current Hyprland takes a Lua expression and refuses the classic string
+    // form outright - `focuswindow title:...` comes back "')' expected near
+    // 'title'" - while the releases before it take only the string. Try the
+    // Lua one, fall back to the old one when it is rejected.
+    command: ["bash", "-lc",
+              "hyprctl dispatch \"hl.dsp.focus({ window = 'title:^" + root.windowTitle + "$' })\" 2>/dev/null"
+              + " | grep -qx ok || hyprctl dispatch focuswindow title:^" + root.windowTitle + "$ >/dev/null 2>&1"]
   }
-
-  Component.onCompleted: Hyprland.refreshToplevels()
-
-  Prefs { id: prefs }
 
   // One library, built into whichever surface is showing it. Switching shape
   // rebuilds it, which is why the mode switch reopens the window.
@@ -95,11 +83,14 @@ Item {
     Library {
       bar: root.bar
       cliamp: root.cliamp
-      prefs: prefs
+      prefs: root.prefs
       opened: true
       onCloseRequested: root.close()
+      onBarTitleRequested: function (show) {
+        if (root.prefs) root.prefs.setShowTitle(show)
+      }
       onWindowModeRequested: function (mode) {
-        prefs.setWindowMode(mode)
+        if (root.prefs) root.prefs.setWindowMode(mode)
         root.opened = false
         reopenTimer.restart()
       }
@@ -166,7 +157,21 @@ Item {
 
     // Closed from its own titlebar, or by Hyprland: the bar has to agree, or
     // the next click would "focus" a window that is no longer there.
-    onVisibleChanged: if (!visible && !root.overlayMode) root.opened = false
+    //
+    // Only a close that follows a real showing counts. `visible` also goes
+    // false while the window is being created, and taking that for a close
+    // cleared `opened` behind the bar's back - after which asking for the
+    // window again looked like a first open and never focused anything.
+    property bool everShown: false
+
+    onVisibleChanged: {
+      if (visible) {
+        stacked.everShown = true
+      } else if (stacked.everShown && !root.overlayMode) {
+        stacked.everShown = false
+        root.opened = false
+      }
+    }
 
     Loader {
       active: stacked.visible

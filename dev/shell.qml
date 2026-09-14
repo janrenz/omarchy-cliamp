@@ -154,6 +154,10 @@ ShellRoot {
       app.activate(app.currentRow, false)
     }
 
+    function star(): void {
+      app.toggleFavorite(null)
+    }
+
     function help(on: bool): void {
       app.helpOpen = on
     }

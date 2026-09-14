@@ -12,18 +12,28 @@ BarWidget {
   readonly property var sourcePlayers: mediaService ? mediaService.sourcePlayers : []
 
   readonly property bool mprisMedia: activePlayer !== null && (activePlayer.trackTitle || activePlayer.trackArtist)
-  readonly property bool cliampMedia: cliamp.connected && (cliamp.streamTitle || cliamp.trackTitle) !== ""
-  readonly property bool hasMedia: mprisMedia || cliampMedia
-  readonly property bool isPlaying: activePlayer ? activePlayer.isPlaying : cliamp.playing
+  // Stopped is not paused: with nothing loaded there is nothing to say, and a
+  // widget reading "Paused" at a player that holds no track is a small lie.
+  readonly property bool cliampMedia: cliamp.connected
+      && (cliamp.playing || cliamp.paused)
+      && (cliamp.streamTitle || cliamp.trackTitle) !== ""
+  // When cliamp is reachable its state is the authority: MPRIS keeps reporting
+  // the last track of a player that has stopped, and the bar should not.
+  // MPRIS still answers for everything else on the bus - a browser, Spotify -
+  // which is what the popup is for.
+  readonly property bool hasMedia: cliamp.connected ? cliampMedia : mprisMedia
+  readonly property bool isPlaying: cliamp.connected
+      ? cliamp.playing
+      : (activePlayer ? activePlayer.isPlaying : false)
   readonly property string playIcon: isPlaying ? "󰏤" : "󰐊"
   // On radio, MPRIS reports the station as the title while cliamp reports the
   // song the station is playing — prefer the song, and keep the station as the
   // secondary label.
-  readonly property string title: cliampMedia
-      ? (cliamp.streamTitle || cliamp.trackTitle || "")
+  readonly property string title: cliamp.connected
+      ? (cliampMedia ? (cliamp.streamTitle || cliamp.trackTitle || "") : "")
       : (mprisMedia ? (activePlayer.trackTitle || "") : "")
-  readonly property string artist: cliampMedia
-      ? (cliamp.station || cliamp.trackArtist || "")
+  readonly property string artist: cliamp.connected
+      ? (cliampMedia ? (cliamp.station || cliamp.trackArtist || "") : "")
       : (mprisMedia ? (activePlayer.trackArtist || "") : "")
 
   property bool popupOpen: false
@@ -40,10 +50,13 @@ BarWidget {
     wantVisualizer: true
   }
 
+  Prefs { id: prefs }
+
   App {
     id: app
     bar: root.bar
     cliamp: cliamp
+    prefs: prefs
   }
   property real maxLabelWidth: 180
 
@@ -117,12 +130,13 @@ BarWidget {
       height: glyph.height
       clip: true
       anchors.verticalCenter: parent.verticalCenter
-      visible: !root.bar.vertical && root.title !== ""
+      visible: !root.bar.vertical && root.title !== "" && prefs.showTitle
 
       Text {
         id: labelText
         textFormat: Text.PlainText
-        text: root.isPlaying ? (root.title + (root.artist ? "  ·  " + root.artist : "")) : "Paused"
+        text: root.isPlaying ? (root.title + (root.artist ? "  ·  " + root.artist : ""))
+                             : (root.hasMedia ? "Paused" : "")
         color: root.bar.barForeground
         font.family: root.bar.fontFamily
         font.pixelSize: Style.font.body

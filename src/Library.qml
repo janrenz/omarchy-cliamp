@@ -28,6 +28,7 @@ Item {
   // surface it does not own.
   signal closeRequested()
   signal windowModeRequested(string mode)
+  signal barTitleRequested(bool show)
 
   // Browsing stack: each level is {title, rows}. The top level is whatever the
   // current section last loaded.
@@ -956,7 +957,7 @@ BorderSurface {
                   model: root.devices
 
                   Rectangle {
-                    width: settingsColumn.width
+                    width: parent.width
                     height: Style.space(34)
                     radius: Style.spacing.labelGap
                     readonly property bool active: modelData.active === true || modelData.current === true || modelData.name === root.activeDevice
@@ -1075,7 +1076,8 @@ BorderSurface {
                   textFormat: Text.PlainText
                 }
 
-                Row {
+                Flow {
+                  width: parent.width
                   spacing: Style.space(6)
 
                   Repeater {
@@ -1091,7 +1093,8 @@ BorderSurface {
                   }
                 }
 
-                Row {
+                Flow {
+                  width: parent.width
                   spacing: Style.space(6)
 
                   Repeater {
@@ -1152,7 +1155,8 @@ BorderSurface {
                   textFormat: Text.PlainText
                 }
 
-                Row {
+                Flow {
+                  width: parent.width
                   spacing: Style.space(8)
 
                   Button {
@@ -1192,7 +1196,8 @@ BorderSurface {
                   textFormat: Text.PlainText
                 }
 
-                Row {
+                Flow {
+                  width: parent.width
                   spacing: Style.space(6)
 
                   Button {
@@ -1212,9 +1217,30 @@ BorderSurface {
                   }
                 }
 
+                Flow {
+                  width: parent.width
+                  spacing: Style.space(6)
+
+                  Button {
+                    text: "Title in the bar"
+                    bordered: true
+                    foreground: root.foreground
+                    selected: !root.prefs || root.prefs.showTitle
+                    onClicked: root.barTitleRequested(true)
+                  }
+
+                  Button {
+                    text: "Spectrum only"
+                    bordered: true
+                    foreground: root.foreground
+                    selected: root.prefs && !root.prefs.showTitle
+                    onClicked: root.barTitleRequested(false)
+                  }
+                }
+
                 Text {
                   width: parent.width
-                  text: "An overlay sits above everything and closes when you click away from it. A normal window is one Hyprland tiles and keeps on its workspace \u2014 opening it again focuses the one you have rather than making a second. Switching reopens the window."
+                  text: "An overlay sits above everything and closes when you click away from it. A normal window is one Hyprland tiles and keeps on its workspace \u2014 opening it again focuses the one you have rather than making a second. Switching reopens the window. The bar can show what is playing or just the spectrum."
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1238,7 +1264,8 @@ BorderSurface {
                   textFormat: Text.PlainText
                 }
 
-                Row {
+                Flow {
+                  width: parent.width
                   spacing: Style.space(8)
 
                   Button {

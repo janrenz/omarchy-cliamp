@@ -16,7 +16,12 @@ STAGE="$(./link.sh)"
 # Quickshell rewrites its own argv to a bare "/usr/bin/quickshell", so no
 # pkill pattern can find a previous harness: every run used to leave one
 # behind, window and all. Its own CLI knows which instance is which.
-qs -p "$STAGE/shell.qml" kill >/dev/null 2>&1 || true
+# In a loop: `kill` takes one instance at a time, and several can share this
+# config path once a run has been interrupted.
+for _ in 1 2 3 4 5; do
+  qs -p "$STAGE/shell.qml" kill >/dev/null 2>&1 || break
+  sleep 0.3
+done
 sleep 0.5
 
 # QML_DISABLE_DISK_CACHE, because the stage's file names never change: with the
