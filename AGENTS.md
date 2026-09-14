@@ -109,6 +109,28 @@ section, whose adapters really do call their APIs.
 - **`vis` and `theme` are TUI-only.** The daemon refuses them. The spectrum
   comes from `cliamp visstream`, which does work headless.
 
+## Branches, while a marketplace review is open
+
+`main` is what the marketplace validates, and a listing review binds to an exact
+commit. Every push to `main` while a submission is open invalidates the snapshot
+that was reviewed and restarts the round — a docs-only commit moves HEAD exactly
+as far as a feature does. That has already cost two rounds on the Teams listing.
+
+So while a submission is open: `main` is frozen at the submitted commit, and
+everything lands on `dev`. When the listing is approved, merge `dev` into `main`
+in one go, and only then open the update request — it binds a SHA the same way,
+so the merge has to be in it. When no submission is open, `main` is fine to
+commit to directly.
+
+Editing the submission issue body is what re-runs validation and the security
+baseline against current HEAD. The bot edits its two comments in place rather
+than posting new ones, so watch `updated_at`, not `created_at`.
+
+Getting a *published* listing onto a newer commit is a different route: the
+**Plugin verification** form (`verify-plugin.yml`), **Verify and publish a newer
+upstream commit**, with the plugin id, the repository root URL, and the full
+40-character SHA.
+
 ## Before a commit
 
 ```sh
