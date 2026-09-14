@@ -23,6 +23,11 @@ views of one instance, so pausing here pauses there.
 
 ![Every key, on ?](showcase-keys.png)
 
+In the bar, playing and paused — the same five bars, morphed:
+
+![The bar while something plays](showcase-bar-playing.png)
+![The bar, paused](showcase-bar-paused.png)
+
 ## What it does
 
 - **Bar widget** — the track title, scrolling, with cliamp's spectrum beside it.
@@ -30,7 +35,8 @@ views of one instance, so pausing here pauses there.
   different icon. Click opens the library; middle-click skips; the wheel moves
   through the queue; right-click keeps the small MPRIS popup.
 - **Library window** — radio, podcasts, live radio worldwide, your files, the
-  queue, history, settings. Keyboard-first, mouse-complete.
+  queue, history, settings. Keyboard-first, mouse-complete, with a breadcrumb
+  that says where a drilled-in list came from and gets you back in one click.
 - **Broadcast, wherever you are** — live stations for your country via the
   [Radio Browser](https://www.radio-browser.info/) directory, with the country
   detected from your timezone and switchable in the list. Where a public

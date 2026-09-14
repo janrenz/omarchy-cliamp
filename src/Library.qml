@@ -121,6 +121,15 @@ Item {
     root.setRows(title, list)
   }
 
+  // Back to a named level: the breadcrumb's crumbs are clickable, and clicking
+  // the first one from three levels deep should land there, not one step up.
+  function backTo(level) {
+    if (level < 0 || level >= root.stack.length) return
+    var target = root.stack[level]
+    root.stack = root.stack.slice(0, level)
+    root.setRows(target.title, target.rows)
+  }
+
   function back() {
     if (!root.stack.length) return false
     var level = root.stack[root.stack.length - 1]
@@ -527,8 +536,46 @@ BorderSurface {
 
         Row {
           anchors.left: parent.left
+          anchors.right: searchField.left
+          anchors.rightMargin: Style.space(16)
           anchors.verticalCenter: parent.verticalCenter
-          spacing: Style.space(10)
+          spacing: Style.space(8)
+
+          // Where this list came from. A drilled-in list that only says
+          // "Apokalypse & Filterkaffee" leaves the way back to a keystroke
+          // nobody has been told about.
+          Repeater {
+            model: root.stack
+
+            Row {
+              spacing: Style.space(8)
+              anchors.verticalCenter: parent.verticalCenter
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: modelData.title
+                color: root.subdued
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.subtitle
+                textFormat: Text.PlainText
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.backTo(index)
+                }
+              }
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "›"
+                color: Qt.rgba(root.subdued.r, root.subdued.g, root.subdued.b, 0.6)
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.subtitle
+                textFormat: Text.PlainText
+              }
+            }
+          }
 
           Text {
             anchors.verticalCenter: parent.verticalCenter
@@ -537,6 +584,7 @@ BorderSurface {
             font.family: root.fontFamily
             font.pixelSize: Style.font.title
             font.bold: true
+            elide: Text.ElideRight
             textFormat: Text.PlainText
           }
 
@@ -545,7 +593,7 @@ BorderSurface {
             width: statusText.implicitWidth + Style.space(16)
             height: Style.space(22)
             radius: height / 2
-            color: root.faint
+            color: root.error ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.14) : root.faint
             visible: statusText.text !== ""
 
             Text {
@@ -704,7 +752,7 @@ BorderSurface {
 
             delegate: Item {
               width: listView.width
-              height: modelData.header ? Style.space(34) : Style.space(58)
+              height: modelData.header ? Style.space(32) : Style.space(56)
 
               // section header
               Item {
@@ -716,13 +764,12 @@ BorderSurface {
                   anchors.left: parent.left
                   anchors.leftMargin: Style.space(4)
                   anchors.bottom: parent.bottom
-                  anchors.bottomMargin: Style.space(6)
+                  anchors.bottomMargin: Style.space(7)
                   text: (modelData.title || "").toUpperCase()
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
-                  font.bold: true
-                  font.letterSpacing: 1.2
+                  font.letterSpacing: 1.4
                   textFormat: Text.PlainText
                 }
 
@@ -741,20 +788,41 @@ BorderSurface {
                 id: rowSurface
                 anchors.fill: parent
                 visible: !modelData.header
-                radius: Style.spacing.labelGap
+                radius: Style.space(7)
                 readonly property bool current: index === root.selected
                 readonly property bool control: modelData.kind === "country-picker"
                 color: current ? root.selectedBackground : (rowMouse.containsMouse ? root.faint : "transparent")
                 border.width: control ? 1 : 0
-                border.color: control ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.5) : "transparent"
+                border.color: control ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.45) : "transparent"
+
+                Behavior on color {
+                  ColorAnimation { duration: 90 }
+                }
+
+                // The cursor as a rail rather than a filled row: it marks the
+                // line without washing the artwork beside it out.
+                Rectangle {
+                  anchors.left: parent.left
+                  anchors.leftMargin: Style.space(2)
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Style.space(3)
+                  height: rowSurface.current ? parent.height - Style.space(18) : 0
+                  radius: width / 2
+                  color: Color.accent
+                  visible: !rowSurface.control
+
+                  Behavior on height {
+                    NumberAnimation { duration: 120; easing.type: Easing.OutQuad }
+                  }
+                }
 
                 Rectangle {
                   id: artwork
                   anchors.left: parent.left
-                  anchors.leftMargin: Style.space(8)
+                  anchors.leftMargin: Style.space(12)
                   anchors.verticalCenter: parent.verticalCenter
-                  width: Style.space(44)
-                  height: Style.space(44)
+                  width: Style.space(40)
+                  height: Style.space(40)
                   radius: Style.space(6)
                   color: root.faint
                   clip: true
@@ -767,21 +835,34 @@ BorderSurface {
                     fillMode: Image.PreserveAspectCrop
                     sourceSize.width: 128
                     sourceSize.height: 128
+                    opacity: rowMouse.containsMouse || rowSurface.current ? 1.0 : 0.9
+
+                    Behavior on opacity {
+                      NumberAnimation { duration: 120 }
+                    }
                   }
 
                   Text {
                     anchors.centerIn: parent
                     visible: !modelData.art
-                    text: modelData.kind === "country-picker" ? "󰇧"
-                        : modelData.kind === "country" ? "󰇧"
+                    text: modelData.kind === "country-picker" || modelData.kind === "country" ? "󰇧"
                         : modelData.kind === "live" ? "󰐹"
                         : modelData.kind === "feed" || modelData.kind === "show" ? "󰦔"
                         : modelData.kind === "category" ? "󰉹"
                         : modelData.kind === "playlist" ? "󰲹" : "󰝚"
-                    color: root.subdued
+                    color: rowSurface.current ? root.selectedText : root.subdued
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.subtitle
                     textFormat: Text.PlainText
+                  }
+
+                  // A hairline, so pale artwork still has an edge.
+                  Rectangle {
+                    anchors.fill: parent
+                    radius: parent.radius
+                    color: "transparent"
+                    border.width: 1
+                    border.color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.07)
                   }
                 }
 
@@ -789,7 +870,7 @@ BorderSurface {
                   anchors.left: artwork.right
                   anchors.leftMargin: Style.space(12)
                   anchors.right: rowActions.left
-                  anchors.rightMargin: Style.space(10)
+                  anchors.rightMargin: Style.space(12)
                   anchors.verticalCenter: parent.verticalCenter
                   spacing: Style.space(3)
 
@@ -818,44 +899,68 @@ BorderSurface {
                 Row {
                   id: rowActions
                   anchors.right: parent.right
-                  anchors.rightMargin: Style.space(8)
+                  anchors.rightMargin: Style.space(10)
                   anchors.verticalCenter: parent.verticalCenter
-                  spacing: Style.space(4)
+                  spacing: Style.space(2)
 
-                  Text {
+                  // Fixed width, so durations line up down the list instead of
+                  // drifting with whatever buttons sit beside them.
+                  Item {
+                    width: Style.space(52)
+                    height: Style.space(20)
                     anchors.verticalCenter: parent.verticalCenter
-                    text: root.formatDuration(modelData.duration)
-                    color: root.subdued
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.caption
-                    textFormat: Text.PlainText
-                    rightPadding: Style.space(4)
+
+                    Text {
+                      anchors.right: parent.right
+                      anchors.rightMargin: Style.space(8)
+                      anchors.verticalCenter: parent.verticalCenter
+                      text: root.formatDuration(modelData.duration)
+                      color: root.subdued
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                      textFormat: Text.PlainText
+                    }
                   }
 
                   Button {
                     iconText: "󰐊"
                     foreground: root.foreground
-                    visible: rowMouse.containsMouse || rowSurface.current
-                    tooltipText: "Play"
+                    opacity: rowMouse.containsMouse || rowSurface.current ? 1.0 : 0.0
+                    visible: opacity > 0
+                    tooltipText: "Play  ·  ⏎"
                     onClicked: root.activate(modelData, false)
+
+                    Behavior on opacity {
+                      NumberAnimation { duration: 110 }
+                    }
                   }
 
                   Button {
                     iconText: "󰲹"
                     foreground: root.foreground
-                    visible: (rowMouse.containsMouse || rowSurface.current)
-                             && ["track", "episode", "live", "queued"].indexOf(modelData.kind) >= 0
-                    tooltipText: "Play next"
+                    opacity: (rowMouse.containsMouse || rowSurface.current)
+                             && ["track", "episode", "live", "queued"].indexOf(modelData.kind) >= 0 ? 1.0 : 0.0
+                    visible: opacity > 0
+                    tooltipText: "Play next  ·  ⇧⏎"
                     onClicked: root.activate(modelData, true)
+
+                    Behavior on opacity {
+                      NumberAnimation { duration: 110 }
+                    }
                   }
 
                   Button {
                     iconText: favorites.starred(modelData) ? "󰓎" : "󰓒"
                     foreground: favorites.starred(modelData) ? Color.accent : root.foreground
-                    visible: favorites.canStar(modelData)
-                             && (favorites.starred(modelData) || rowMouse.containsMouse || rowSurface.current)
+                    opacity: !favorites.canStar(modelData) ? 0.0
+                             : (favorites.starred(modelData) || rowMouse.containsMouse || rowSurface.current ? 1.0 : 0.0)
+                    visible: opacity > 0
                     tooltipText: favorites.starred(modelData) ? "Remove star  ·  f" : "Star  ·  f"
                     onClicked: root.toggleFavorite(modelData)
+
+                    Behavior on opacity {
+                      NumberAnimation { duration: 110 }
+                    }
                   }
                 }
 
@@ -868,6 +973,65 @@ BorderSurface {
                   onClicked: function (mouse) {
                     root.selected = index
                     root.activate(modelData, mouse.button === Qt.RightButton)
+                  }
+                }
+              }
+            }
+          }
+
+          // Something to look at while a list loads, in the shape of the list
+          // that is coming: an empty pane under a "loading…" chip reads as a
+          // section that arrived wrong.
+          Column {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.rightMargin: Style.space(8)
+            spacing: Style.space(2)
+            visible: root.loading && root.visibleRows.length === 0
+
+            SequentialAnimation on opacity {
+              running: root.loading
+              loops: Animation.Infinite
+              NumberAnimation { from: 0.55; to: 0.28; duration: 700; easing.type: Easing.InOutQuad }
+              NumberAnimation { from: 0.28; to: 0.55; duration: 700; easing.type: Easing.InOutQuad }
+            }
+
+            Repeater {
+              model: 7
+
+              Item {
+                width: parent.width
+                height: Style.space(56)
+
+                Rectangle {
+                  anchors.left: parent.left
+                  anchors.leftMargin: Style.space(12)
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Style.space(40)
+                  height: Style.space(40)
+                  radius: Style.space(6)
+                  color: root.faint
+                }
+
+                Column {
+                  anchors.left: parent.left
+                  anchors.leftMargin: Style.space(64)
+                  anchors.verticalCenter: parent.verticalCenter
+                  spacing: Style.space(7)
+
+                  Rectangle {
+                    width: Style.space(150 + (index % 3) * 60)
+                    height: Style.space(9)
+                    radius: height / 2
+                    color: root.faint
+                  }
+
+                  Rectangle {
+                    width: Style.space(90 + (index % 2) * 40)
+                    height: Style.space(7)
+                    radius: height / 2
+                    color: root.faint
                   }
                 }
               }
@@ -1359,11 +1523,52 @@ BorderSurface {
 
         Item {
           anchors.fill: parent
-          anchors.leftMargin: Style.space(16)
+          anchors.leftMargin: Style.space(14)
           anchors.rightMargin: Style.space(16)
 
-          Column {
+          // The artwork of what is playing, where a player puts it.
+          Rectangle {
+            id: nowArt
             anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            width: Style.space(46)
+            height: Style.space(46)
+            radius: Style.space(7)
+            color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.06)
+            clip: true
+
+            Image {
+              anchors.fill: parent
+              source: root.cliamp && root.cliamp.artUrl ? root.cliamp.artUrl : ""
+              visible: source !== "" && status === Image.Ready
+              asynchronous: true
+              fillMode: Image.PreserveAspectCrop
+              sourceSize.width: 128
+              sourceSize.height: 128
+            }
+
+            Text {
+              anchors.centerIn: parent
+              visible: !root.cliamp || !root.cliamp.artUrl
+              text: root.cliamp && root.cliamp.playing ? "󰝚" : "󰝟"
+              color: root.subdued
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.subtitle
+              textFormat: Text.PlainText
+            }
+
+            Rectangle {
+              anchors.fill: parent
+              radius: parent.radius
+              color: "transparent"
+              border.width: 1
+              border.color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.08)
+            }
+          }
+
+          Column {
+            anchors.left: nowArt.right
+            anchors.leftMargin: Style.space(14)
             anchors.right: spectrum.left
             anchors.rightMargin: Style.space(16)
             anchors.verticalCenter: parent.verticalCenter
