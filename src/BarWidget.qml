@@ -50,6 +50,25 @@ BarWidget {
 
   function close() { popupOpen = false }
 
+  // Im Spektrum-Modus gehört der Klick dem Abspielen, also kann er den Popover
+  // nicht auch noch öffnen — sonst bliebe das Fenster hinter dem Rechtsklick
+  // verborgen, den niemand sucht. Deshalb dieselbe Geste wie beim Titel: wer
+  // stehenbleibt, bekommt die Karte mit den Angaben und den beiden Wegen
+  // weiter. Die Verzögerung ist da, damit ein Vorbeifahren nichts aufklappt.
+  Timer {
+    id: karteOeffnen
+    interval: 420
+    onTriggered: if (root.hovered && root.spectrumOnly) root.popupOpen = true
+  }
+
+  // Zwischen Leiste und Karte liegt eine Lücke, über die der Zeiger muss.
+  // Sofort zu schließen hieße, die Karte nie erreichen zu können.
+  Timer {
+    id: karteSchliessen
+    interval: 260
+    onTriggered: if (!root.hovered && !popup.containsMouse) root.popupOpen = false
+  }
+
   function playPause() {
     if (cliamp.connected) {
       cliamp.playPause()
@@ -223,6 +242,10 @@ BarWidget {
     }
     onEntered: {
       root.hovered = true
+      if (root.spectrumOnly) {
+        karteSchliessen.stop()
+        karteOeffnen.restart()
+      }
       // Im Spektrum-Modus steht der Titel jetzt in der Leiste selbst — eine
       // Sprechblase mit demselben Text daneben wäre doppelt.
       if (root.bar && !root.spectrumOnly) {
@@ -231,6 +254,8 @@ BarWidget {
     }
     onExited: {
       root.hovered = false
+      karteOeffnen.stop()
+      if (root.spectrumOnly && root.popupOpen) karteSchliessen.restart()
       if (root.bar) root.bar.hideTooltip(root)
     }
   }
@@ -240,7 +265,15 @@ BarWidget {
     anchorItem: root
     bar: root.bar
     owner: root
+    // Ohne Fokusgriff, solange er am Zeiger hängt: der Griff fängt jeden Klick
+    // außerhalb ab, und der erste Klick zurück auf die Leiste wäre dann kein
+    // Play/Pause mehr, sondern nur noch ein Zumachen.
+    triggerMode: root.spectrumOnly ? "hover" : "click"
     open: root.popupOpen
+    onContainsMouseChanged: {
+      if (popup.containsMouse) karteSchliessen.stop()
+      else if (root.spectrumOnly && !root.hovered) karteSchliessen.restart()
+    }
     contentWidth: popup.fittedContentWidth(Style.space(320))
     contentHeight: popup.fittedContentHeight(column.implicitHeight)
 
