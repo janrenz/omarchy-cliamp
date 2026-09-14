@@ -5,6 +5,7 @@ import Quickshell.Io
 import qs.Ui
 import qs.Commons
 import "Model.js" as Model
+import "Texte.js" as Texte
 import "Ard.js" as Ard
 import "RadioBrowser.js" as RadioBrowser
 
@@ -28,6 +29,8 @@ Item {
   // surface it does not own.
   signal closeRequested()
   signal windowModeRequested(string mode)
+  signal barTitleRequested(bool show)
+  signal languageRequested(string lang)
 
   // Browsing stack: each level is {title, rows}. The top level is whatever the
   // current section last loaded.
@@ -51,15 +54,22 @@ Item {
   property var devices: []
   property string activeDevice: ""
 
+  // Jeder sichtbare Text läuft hier durch. Die Funktion liest prefs.sprache,
+  // und weil das eine Eigenschaft ist, zeichnen sich alle Bindungen neu, sobald
+  // die Sprache umgestellt wird — ohne das Fenster neu zu bauen.
+  function t(text) {
+    return Texte.t(text, root.prefs ? root.prefs.sprache : "en")
+  }
+
   readonly property var sections: [
-    {key: "favorites", label: "Favorites", icon: "󰓒", hint: "Everything you starred"},
-    {key: "radio", label: "Radio", icon: "󰐹", hint: "cliamp's own station list"},
-    {key: "podcast", label: "Podcasts", icon: "󰦔", hint: "Apple directory and RSS"},
-    {key: "broadcast", label: "Broadcast", icon: "󰜟", hint: "Live radio worldwide"},
-    {key: "local", label: "Files", icon: "󰉋", hint: "Saved and local playlists"},
-    {key: "queue", label: "Queue", icon: "󰲹", hint: "What plays next"},
-    {key: "history", label: "History", icon: "󰄉", hint: "Recently played"},
-    {key: "settings", label: "Settings", icon: "󰒓", hint: "Output, sound, session"}
+    {key: "favorites", label: t("Favorites"), icon: "󰓒", hint: t("Everything you starred")},
+    {key: "radio", label: t("Radio"), icon: "󰐹", hint: t("cliamp's own station list")},
+    {key: "podcast", label: t("Podcasts"), icon: "󰦔", hint: t("Apple directory and RSS")},
+    {key: "broadcast", label: t("Broadcast"), icon: "󰜟", hint: t("Live radio worldwide")},
+    {key: "local", label: t("Files"), icon: "󰉋", hint: t("Saved and local playlists")},
+    {key: "queue", label: t("Queue"), icon: "󰲹", hint: t("What plays next")},
+    {key: "history", label: t("History"), icon: "󰄉", hint: t("Recently played")},
+    {key: "settings", label: t("Settings"), icon: "󰒓", hint: t("Output, sound, session")}
   ]
 
   readonly property color background: Color.menu.background
@@ -118,6 +128,15 @@ Item {
   function push(title, list) {
     root.stack = root.stack.concat([{title: root.heading, rows: root.rows}])
     root.setRows(title, list)
+  }
+
+  // Back to a named level: the breadcrumb's crumbs are clickable, and clicking
+  // the first one from three levels deep should land there, not one step up.
+  function backTo(level) {
+    if (level < 0 || level >= root.stack.length) return
+    var target = root.stack[level]
+    root.stack = root.stack.slice(0, level)
+    root.setRows(target.title, target.rows)
   }
 
   function back() {
@@ -217,10 +236,10 @@ Item {
     RadioBrowser.topStations(root.country, 60, function (stations) {
       var rows = [{
         kind: "country-picker",
-        title: "Country · " + (root.countryName || root.country),
+        title: t("Country · ") + (root.countryName || root.country),
         subtitle: "Pick where the dial starts",
         art: ""
-      }, root.headerRow("Top stations · " + root.country)].concat(stations)
+      }, root.headerRow(t("Top stations · ") + root.country)].concat(stations)
 
       if (!root.publicCatalog) {
         root.setRows("Broadcast", rows)
@@ -353,14 +372,14 @@ Item {
     if (root.section === "broadcast") {
       RadioBrowser.search(query, root.country, 40, function (stations) {
         if (!root.publicCatalog) {
-          root.push("Broadcast · " + query, stations)
+          root.push(t("Broadcast · ") + query, stations)
           return
         }
         Ard.search(query, 25, function (shows) {
           var rows = [root.headerRow("Stations")].concat(stations)
             .concat([root.headerRow("ARD Audiothek")]).concat(shows)
           root.push("Broadcast · " + query, rows)
-        }, function () { root.push("Broadcast · " + query, stations) })
+        }, function () { root.push(t("Broadcast · ") + query, stations) })
       }, root.fail)
       return
     }
@@ -526,8 +545,46 @@ BorderSurface {
 
         Row {
           anchors.left: parent.left
+          anchors.right: searchField.left
+          anchors.rightMargin: Style.space(16)
           anchors.verticalCenter: parent.verticalCenter
-          spacing: Style.space(10)
+          spacing: Style.space(8)
+
+          // Where this list came from. A drilled-in list that only says
+          // "Apokalypse & Filterkaffee" leaves the way back to a keystroke
+          // nobody has been told about.
+          Repeater {
+            model: root.stack
+
+            Row {
+              spacing: Style.space(8)
+              anchors.verticalCenter: parent.verticalCenter
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: modelData.title
+                color: root.subdued
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.subtitle
+                textFormat: Text.PlainText
+
+                MouseArea {
+                  anchors.fill: parent
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.backTo(index)
+                }
+              }
+
+              Text {
+                anchors.verticalCenter: parent.verticalCenter
+                text: "›"
+                color: Qt.rgba(root.subdued.r, root.subdued.g, root.subdued.b, 0.6)
+                font.family: root.fontFamily
+                font.pixelSize: Style.font.subtitle
+                textFormat: Text.PlainText
+              }
+            }
+          }
 
           Text {
             anchors.verticalCenter: parent.verticalCenter
@@ -536,6 +593,7 @@ BorderSurface {
             font.family: root.fontFamily
             font.pixelSize: Style.font.title
             font.bold: true
+            elide: Text.ElideRight
             textFormat: Text.PlainText
           }
 
@@ -544,15 +602,15 @@ BorderSurface {
             width: statusText.implicitWidth + Style.space(16)
             height: Style.space(22)
             radius: height / 2
-            color: root.faint
+            color: root.error ? Qt.rgba(Color.urgent.r, Color.urgent.g, Color.urgent.b, 0.14) : root.faint
             visible: statusText.text !== ""
 
             Text {
               id: statusText
               anchors.centerIn: parent
-              text: root.loading ? "loading…"
+              text: root.loading ? t("loading…")
                   : root.error ? root.error
-                  : root.listSection ? root.visibleRows.length + (root.visibleRows.length === 1 ? " item" : " items") : ""
+                  : root.listSection ? root.visibleRows.length + (root.visibleRows.length === 1 ? t(" item") : t(" items")) : ""
               color: root.error ? Color.urgent : root.subdued
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
@@ -567,11 +625,11 @@ BorderSurface {
           anchors.verticalCenter: parent.verticalCenter
           width: Style.space(320)
           foreground: root.foreground
-          placeholderText: root.section === "broadcast" ? "Search stations and shows…"
-                         : root.section === "podcast" ? "Search podcasts…"
-                         : root.section === "radio" ? "Search stations…"
-                         : root.section === "local" ? "Search your library…"
-                         : "Filter…"
+          placeholderText: root.section === "broadcast" ? t("Search stations and shows…")
+                         : root.section === "podcast" ? t("Search podcasts…")
+                         : root.section === "radio" ? t("Search stations…")
+                         : root.section === "local" ? t("Search your library…")
+                         : t("Filter…")
           visible: root.listSection
           onTextChanged: {
             if (root.section === "queue" || root.section === "history") root.filter = text
@@ -667,8 +725,8 @@ BorderSurface {
           Text {
             width: sidebar.width
             text: root.cliamp && root.cliamp.connected
-                ? (root.cliamp.daemonOwned ? "󰄬  cliamp · background" : "󰄬  cliamp · connected")
-                : "󰅖  cliamp · offline"
+                ? (root.cliamp.daemonOwned ? t("󰄬  cliamp · background") : t("󰄬  cliamp · connected"))
+                : t("󰅖  cliamp · offline")
             color: root.subdued
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
@@ -703,7 +761,7 @@ BorderSurface {
 
             delegate: Item {
               width: listView.width
-              height: modelData.header ? Style.space(34) : Style.space(58)
+              height: modelData.header ? Style.space(32) : Style.space(56)
 
               // section header
               Item {
@@ -715,13 +773,12 @@ BorderSurface {
                   anchors.left: parent.left
                   anchors.leftMargin: Style.space(4)
                   anchors.bottom: parent.bottom
-                  anchors.bottomMargin: Style.space(6)
+                  anchors.bottomMargin: Style.space(7)
                   text: (modelData.title || "").toUpperCase()
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
-                  font.bold: true
-                  font.letterSpacing: 1.2
+                  font.letterSpacing: 1.4
                   textFormat: Text.PlainText
                 }
 
@@ -740,20 +797,41 @@ BorderSurface {
                 id: rowSurface
                 anchors.fill: parent
                 visible: !modelData.header
-                radius: Style.spacing.labelGap
+                radius: Style.space(7)
                 readonly property bool current: index === root.selected
                 readonly property bool control: modelData.kind === "country-picker"
                 color: current ? root.selectedBackground : (rowMouse.containsMouse ? root.faint : "transparent")
                 border.width: control ? 1 : 0
-                border.color: control ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.5) : "transparent"
+                border.color: control ? Qt.rgba(Color.accent.r, Color.accent.g, Color.accent.b, 0.45) : "transparent"
+
+                Behavior on color {
+                  ColorAnimation { duration: 90 }
+                }
+
+                // The cursor as a rail rather than a filled row: it marks the
+                // line without washing the artwork beside it out.
+                Rectangle {
+                  anchors.left: parent.left
+                  anchors.leftMargin: Style.space(2)
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Style.space(3)
+                  height: rowSurface.current ? parent.height - Style.space(18) : 0
+                  radius: width / 2
+                  color: Color.accent
+                  visible: !rowSurface.control
+
+                  Behavior on height {
+                    NumberAnimation { duration: 120; easing.type: Easing.OutQuad }
+                  }
+                }
 
                 Rectangle {
                   id: artwork
                   anchors.left: parent.left
-                  anchors.leftMargin: Style.space(8)
+                  anchors.leftMargin: Style.space(12)
                   anchors.verticalCenter: parent.verticalCenter
-                  width: Style.space(44)
-                  height: Style.space(44)
+                  width: Style.space(40)
+                  height: Style.space(40)
                   radius: Style.space(6)
                   color: root.faint
                   clip: true
@@ -766,21 +844,34 @@ BorderSurface {
                     fillMode: Image.PreserveAspectCrop
                     sourceSize.width: 128
                     sourceSize.height: 128
+                    opacity: rowMouse.containsMouse || rowSurface.current ? 1.0 : 0.9
+
+                    Behavior on opacity {
+                      NumberAnimation { duration: 120 }
+                    }
                   }
 
                   Text {
                     anchors.centerIn: parent
                     visible: !modelData.art
-                    text: modelData.kind === "country-picker" ? "󰇧"
-                        : modelData.kind === "country" ? "󰇧"
+                    text: modelData.kind === "country-picker" || modelData.kind === "country" ? "󰇧"
                         : modelData.kind === "live" ? "󰐹"
                         : modelData.kind === "feed" || modelData.kind === "show" ? "󰦔"
                         : modelData.kind === "category" ? "󰉹"
                         : modelData.kind === "playlist" ? "󰲹" : "󰝚"
-                    color: root.subdued
+                    color: rowSurface.current ? root.selectedText : root.subdued
                     font.family: root.fontFamily
                     font.pixelSize: Style.font.subtitle
                     textFormat: Text.PlainText
+                  }
+
+                  // A hairline, so pale artwork still has an edge.
+                  Rectangle {
+                    anchors.fill: parent
+                    radius: parent.radius
+                    color: "transparent"
+                    border.width: 1
+                    border.color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.07)
                   }
                 }
 
@@ -788,7 +879,7 @@ BorderSurface {
                   anchors.left: artwork.right
                   anchors.leftMargin: Style.space(12)
                   anchors.right: rowActions.left
-                  anchors.rightMargin: Style.space(10)
+                  anchors.rightMargin: Style.space(12)
                   anchors.verticalCenter: parent.verticalCenter
                   spacing: Style.space(3)
 
@@ -817,44 +908,68 @@ BorderSurface {
                 Row {
                   id: rowActions
                   anchors.right: parent.right
-                  anchors.rightMargin: Style.space(8)
+                  anchors.rightMargin: Style.space(10)
                   anchors.verticalCenter: parent.verticalCenter
-                  spacing: Style.space(4)
+                  spacing: Style.space(2)
 
-                  Text {
+                  // Fixed width, so durations line up down the list instead of
+                  // drifting with whatever buttons sit beside them.
+                  Item {
+                    width: Style.space(52)
+                    height: Style.space(20)
                     anchors.verticalCenter: parent.verticalCenter
-                    text: root.formatDuration(modelData.duration)
-                    color: root.subdued
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.caption
-                    textFormat: Text.PlainText
-                    rightPadding: Style.space(4)
+
+                    Text {
+                      anchors.right: parent.right
+                      anchors.rightMargin: Style.space(8)
+                      anchors.verticalCenter: parent.verticalCenter
+                      text: root.formatDuration(modelData.duration)
+                      color: root.subdued
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.caption
+                      textFormat: Text.PlainText
+                    }
                   }
 
                   Button {
                     iconText: "󰐊"
                     foreground: root.foreground
-                    visible: rowMouse.containsMouse || rowSurface.current
-                    tooltipText: "Play"
+                    opacity: rowMouse.containsMouse || rowSurface.current ? 1.0 : 0.0
+                    visible: opacity > 0
+                    tooltipText: t("Play  ·  ⏎")
                     onClicked: root.activate(modelData, false)
+
+                    Behavior on opacity {
+                      NumberAnimation { duration: 110 }
+                    }
                   }
 
                   Button {
                     iconText: "󰲹"
                     foreground: root.foreground
-                    visible: (rowMouse.containsMouse || rowSurface.current)
-                             && ["track", "episode", "live", "queued"].indexOf(modelData.kind) >= 0
-                    tooltipText: "Play next"
+                    opacity: (rowMouse.containsMouse || rowSurface.current)
+                             && ["track", "episode", "live", "queued"].indexOf(modelData.kind) >= 0 ? 1.0 : 0.0
+                    visible: opacity > 0
+                    tooltipText: t("Play next  ·  ⇧⏎")
                     onClicked: root.activate(modelData, true)
+
+                    Behavior on opacity {
+                      NumberAnimation { duration: 110 }
+                    }
                   }
 
                   Button {
                     iconText: favorites.starred(modelData) ? "󰓎" : "󰓒"
                     foreground: favorites.starred(modelData) ? Color.accent : root.foreground
-                    visible: favorites.canStar(modelData)
-                             && (favorites.starred(modelData) || rowMouse.containsMouse || rowSurface.current)
-                    tooltipText: favorites.starred(modelData) ? "Remove star  ·  f" : "Star  ·  f"
+                    opacity: !favorites.canStar(modelData) ? 0.0
+                             : (favorites.starred(modelData) || rowMouse.containsMouse || rowSurface.current ? 1.0 : 0.0)
+                    visible: opacity > 0
+                    tooltipText: favorites.starred(modelData) ? t("Remove star  ·  f") : t("Star  ·  f")
                     onClicked: root.toggleFavorite(modelData)
+
+                    Behavior on opacity {
+                      NumberAnimation { duration: 110 }
+                    }
                   }
                 }
 
@@ -873,6 +988,65 @@ BorderSurface {
             }
           }
 
+          // Something to look at while a list loads, in the shape of the list
+          // that is coming: an empty pane under a "loading…" chip reads as a
+          // section that arrived wrong.
+          Column {
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.rightMargin: Style.space(8)
+            spacing: Style.space(2)
+            visible: root.loading && root.visibleRows.length === 0
+
+            SequentialAnimation on opacity {
+              running: root.loading
+              loops: Animation.Infinite
+              NumberAnimation { from: 0.55; to: 0.28; duration: 700; easing.type: Easing.InOutQuad }
+              NumberAnimation { from: 0.28; to: 0.55; duration: 700; easing.type: Easing.InOutQuad }
+            }
+
+            Repeater {
+              model: 7
+
+              Item {
+                width: parent.width
+                height: Style.space(56)
+
+                Rectangle {
+                  anchors.left: parent.left
+                  anchors.leftMargin: Style.space(12)
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Style.space(40)
+                  height: Style.space(40)
+                  radius: Style.space(6)
+                  color: root.faint
+                }
+
+                Column {
+                  anchors.left: parent.left
+                  anchors.leftMargin: Style.space(64)
+                  anchors.verticalCenter: parent.verticalCenter
+                  spacing: Style.space(7)
+
+                  Rectangle {
+                    width: Style.space(150 + (index % 3) * 60)
+                    height: Style.space(9)
+                    radius: height / 2
+                    color: root.faint
+                  }
+
+                  Rectangle {
+                    width: Style.space(90 + (index % 2) * 40)
+                    height: Style.space(7)
+                    radius: height / 2
+                    color: root.faint
+                  }
+                }
+              }
+            }
+          }
+
           // Empty and error states, instead of a blank pane.
           Column {
             anchors.centerIn: parent
@@ -881,7 +1055,11 @@ BorderSurface {
 
             Text {
               anchors.horizontalCenter: parent.horizontalCenter
-              text: root.error ? "󰅖" : "󰝟"
+              text: root.error ? "󰅖"
+                  : root.section === "favorites" ? "󰓒"
+                  : root.section === "queue" ? "󰲹"
+                  : root.section === "history" ? "󰄉"
+                  : root.section === "local" ? "󰉋" : "󰝚"
               color: root.subdued
               font.family: root.fontFamily
               font.pixelSize: Style.font.displayLarge
@@ -891,10 +1069,15 @@ BorderSurface {
             Text {
               anchors.horizontalCenter: parent.horizontalCenter
               text: root.error ? root.error
-                  : root.section === "queue" ? "The queue is empty — play something from Radio or Broadcast."
-                  : root.section === "local" ? "No saved playlists yet. cliamp's `playlist` command creates them."
-                  : root.filter ? "Nothing matches this filter."
-                  : "Nothing here yet. Press / to search."
+                  : root.filter ? t("Nothing matches this filter.")
+                  : root.section === "favorites" ? t("Nothing starred yet. Press f on a station, a show or an episode and it lands here.")
+                  : root.section === "queue" ? t("The queue is empty. Play something from Radio or Broadcast.")
+                  : root.section === "history" ? t("Nothing played yet.")
+                  : root.section === "local" ? t("No saved playlists yet. cliamp's playlist command makes them.")
+                  : t("Nothing here yet. Press / to search.")
+              width: Math.min(Style.space(420), parent.parent.width - Style.space(60))
+              horizontalAlignment: Text.AlignHCenter
+              wrapMode: Text.WordWrap
               color: root.subdued
               font.family: root.fontFamily
               font.pixelSize: Style.font.body
@@ -943,7 +1126,7 @@ BorderSurface {
                 spacing: Style.space(8)
 
                 Text {
-                  text: "OUTPUT"
+                  text: t("OUTPUT")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -956,7 +1139,7 @@ BorderSurface {
                   model: root.devices
 
                   Rectangle {
-                    width: settingsColumn.width
+                    width: parent.width
                     height: Style.space(34)
                     radius: Style.spacing.labelGap
                     readonly property bool active: modelData.active === true || modelData.current === true || modelData.name === root.activeDevice
@@ -996,7 +1179,7 @@ BorderSurface {
                 spacing: Style.space(8)
 
                 Text {
-                  text: "EQUALIZER" + (root.cliamp && root.cliamp.eqPreset ? " · " + root.cliamp.eqPreset : "")
+                  text: t("EQUALIZER") + (root.cliamp && root.cliamp.eqPreset ? " · " + root.cliamp.eqPreset : "")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1066,7 +1249,7 @@ BorderSurface {
                 spacing: Style.space(8)
 
                 Text {
-                  text: "PLAYBACK"
+                  text: t("PLAYBACK")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1075,7 +1258,8 @@ BorderSurface {
                   textFormat: Text.PlainText
                 }
 
-                Row {
+                Flow {
+                  width: parent.width
                   spacing: Style.space(6)
 
                   Repeater {
@@ -1091,14 +1275,15 @@ BorderSurface {
                   }
                 }
 
-                Row {
+                Flow {
+                  width: parent.width
                   spacing: Style.space(6)
 
                   Repeater {
                     model: ["off", "all", "one"]
 
                     Button {
-                      text: "repeat " + modelData
+                      text: t("repeat ") + modelData
                       bordered: true
                       foreground: root.foreground
                       selected: root.cliamp && root.cliamp.repeat.toLowerCase() === modelData
@@ -1107,7 +1292,7 @@ BorderSurface {
                   }
 
                   Button {
-                    text: "shuffle"
+                    text: t("shuffle")
                     bordered: true
                     foreground: root.foreground
                     selected: root.cliamp && root.cliamp.shuffle
@@ -1115,7 +1300,7 @@ BorderSurface {
                   }
 
                   Button {
-                    text: "mono"
+                    text: t("mono")
                     bordered: true
                     foreground: root.foreground
                     selected: root.cliamp && root.cliamp.mono
@@ -1123,7 +1308,7 @@ BorderSurface {
                   }
 
                   Button {
-                    text: "spectrum"
+                    text: t("spectrum")
                     bordered: true
                     foreground: root.foreground
                     selected: root.spectrumEnabled
@@ -1143,7 +1328,7 @@ BorderSurface {
                 spacing: Style.space(8)
 
                 Text {
-                  text: "DISCOVERY"
+                  text: t("DISCOVERY")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1152,11 +1337,12 @@ BorderSurface {
                   textFormat: Text.PlainText
                 }
 
-                Row {
+                Flow {
+                  width: parent.width
                   spacing: Style.space(8)
 
                   Button {
-                    text: "Broadcast country · " + (root.countryName || root.country)
+                    text: t("Broadcast country · ") + (root.countryName || root.country)
                     bordered: true
                     foreground: root.foreground
                     onClicked: {
@@ -1168,7 +1354,7 @@ BorderSurface {
 
                 Text {
                   width: parent.width
-                  text: "Detected from your timezone. Podcast charts follow cliamp's own setting in ~/.config/cliamp/config.toml."
+                  text: t("Detected from your timezone. Podcast charts follow cliamp's own setting in ~/.config/cliamp/config.toml.")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1183,7 +1369,7 @@ BorderSurface {
                 spacing: Style.space(8)
 
                 Text {
-                  text: "WINDOW"
+                  text: t("WINDOW")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1192,11 +1378,12 @@ BorderSurface {
                   textFormat: Text.PlainText
                 }
 
-                Row {
+                Flow {
+                  width: parent.width
                   spacing: Style.space(6)
 
                   Button {
-                    text: "Floating overlay"
+                    text: t("Floating overlay")
                     bordered: true
                     foreground: root.foreground
                     selected: !root.prefs || root.prefs.windowMode === "overlay"
@@ -1204,7 +1391,7 @@ BorderSurface {
                   }
 
                   Button {
-                    text: "Normal window"
+                    text: t("Normal window")
                     bordered: true
                     foreground: root.foreground
                     selected: root.prefs && root.prefs.windowMode === "window"
@@ -1212,9 +1399,85 @@ BorderSurface {
                   }
                 }
 
+                Flow {
+                  width: parent.width
+                  spacing: Style.space(6)
+
+                  Button {
+                    text: t("Title in the bar")
+                    bordered: true
+                    foreground: root.foreground
+                    selected: !root.prefs || root.prefs.showTitle
+                    onClicked: root.barTitleRequested(true)
+                  }
+
+                  Button {
+                    text: t("Spectrum only")
+                    bordered: true
+                    foreground: root.foreground
+                    selected: root.prefs && !root.prefs.showTitle
+                    onClicked: root.barTitleRequested(false)
+                  }
+                }
+
                 Text {
                   width: parent.width
-                  text: "An overlay sits above everything and closes when you click away from it. A normal window is one Hyprland tiles and keeps on its workspace \u2014 opening it again focuses the one you have rather than making a second. Switching reopens the window."
+                  text: t("An overlay sits above everything and closes when you click away from it. A normal window is one Hyprland tiles and keeps on its workspace \u2014 opening it again focuses the one you have rather than making a second. Switching reopens the window. The bar can show what is playing or just the spectrum — with the title gone, clicking it plays and pauses, and the card comes up while you rest on it.")
+                  color: root.subdued
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  wrapMode: Text.WordWrap
+                  textFormat: Text.PlainText
+                }
+              }
+
+              // Language
+              Column {
+                width: parent.width
+                spacing: Style.space(8)
+
+                Text {
+                  text: t("LANGUAGE")
+                  color: root.subdued
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.2
+                  textFormat: Text.PlainText
+                }
+
+                Flow {
+                  width: parent.width
+                  spacing: Style.space(6)
+
+                  Button {
+                    text: t("System")
+                    bordered: true
+                    foreground: root.foreground
+                    selected: !root.prefs || root.prefs.language === "auto"
+                    onClicked: root.languageRequested("auto")
+                  }
+
+                  Button {
+                    text: t("English")
+                    bordered: true
+                    foreground: root.foreground
+                    selected: root.prefs && root.prefs.language === "en"
+                    onClicked: root.languageRequested("en")
+                  }
+
+                  Button {
+                    text: t("German")
+                    bordered: true
+                    foreground: root.foreground
+                    selected: root.prefs && root.prefs.language === "de"
+                    onClicked: root.languageRequested("de")
+                  }
+                }
+
+                Text {
+                  width: parent.width
+                  text: t("The interface follows your system language unless you pick one here.")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1229,7 +1492,7 @@ BorderSurface {
                 spacing: Style.space(8)
 
                 Text {
-                  text: "SESSION"
+                  text: t("SESSION")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1238,11 +1501,12 @@ BorderSurface {
                   textFormat: Text.PlainText
                 }
 
-                Row {
+                Flow {
+                  width: parent.width
                   spacing: Style.space(8)
 
                   Button {
-                    text: "Hand over to terminal"
+                    text: t("Hand over to terminal")
                     bordered: true
                     foreground: root.foreground
                     onClicked: {
@@ -1252,7 +1516,7 @@ BorderSurface {
                   }
 
                   Button {
-                    text: "Reconnect"
+                    text: t("Reconnect")
                     bordered: true
                     foreground: root.foreground
                     onClicked: root.cliamp.refresh()
@@ -1261,7 +1525,7 @@ BorderSurface {
 
                 Text {
                   width: parent.width
-                  text: "Only one cliamp can hold the socket. Handing over stops the background player and opens the terminal one on the current track."
+                  text: t("Only one cliamp can hold the socket. Handing over stops the background player and opens the terminal one on the current track.")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1310,7 +1574,7 @@ BorderSurface {
 
             Text {
               anchors.verticalCenter: parent.verticalCenter
-              text: modelData.label
+              text: t(modelData.label)
               color: root.subdued
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
@@ -1332,11 +1596,52 @@ BorderSurface {
 
         Item {
           anchors.fill: parent
-          anchors.leftMargin: Style.space(16)
+          anchors.leftMargin: Style.space(14)
           anchors.rightMargin: Style.space(16)
 
-          Column {
+          // The artwork of what is playing, where a player puts it.
+          Rectangle {
+            id: nowArt
             anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+            width: Style.space(46)
+            height: Style.space(46)
+            radius: Style.space(7)
+            color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.06)
+            clip: true
+
+            Image {
+              anchors.fill: parent
+              source: root.cliamp && root.cliamp.artUrl ? root.cliamp.artUrl : ""
+              visible: source !== "" && status === Image.Ready
+              asynchronous: true
+              fillMode: Image.PreserveAspectCrop
+              sourceSize.width: 128
+              sourceSize.height: 128
+            }
+
+            Text {
+              anchors.centerIn: parent
+              visible: !root.cliamp || !root.cliamp.artUrl
+              text: root.cliamp && root.cliamp.playing ? "󰝚" : "󰝟"
+              color: root.subdued
+              font.family: root.fontFamily
+              font.pixelSize: Style.font.subtitle
+              textFormat: Text.PlainText
+            }
+
+            Rectangle {
+              anchors.fill: parent
+              radius: parent.radius
+              color: "transparent"
+              border.width: 1
+              border.color: Qt.rgba(root.foreground.r, root.foreground.g, root.foreground.b, 0.08)
+            }
+          }
+
+          Column {
+            anchors.left: nowArt.right
+            anchors.leftMargin: Style.space(14)
             anchors.right: spectrum.left
             anchors.rightMargin: Style.space(16)
             anchors.verticalCenter: parent.verticalCenter
@@ -1344,7 +1649,7 @@ BorderSurface {
 
             Text {
               width: parent.width
-              text: root.cliamp ? (root.cliamp.streamTitle || root.cliamp.trackTitle || "Nothing playing") : ""
+              text: root.cliamp ? (root.cliamp.streamTitle || root.cliamp.trackTitle || t("Nothing playing")) : ""
               color: root.foreground
               font.family: root.fontFamily
               font.pixelSize: Style.font.body
@@ -1444,28 +1749,28 @@ BorderSurface {
             Button {
               iconText: "󰒮"
               foreground: root.foreground
-              tooltipText: "Previous  ·  p"
+              tooltipText: t("Previous  ·  p")
               onClicked: root.cliamp.previous()
             }
 
             Button {
               iconText: root.cliamp && root.cliamp.playing ? "󰏤" : "󰐊"
               foreground: root.foreground
-              tooltipText: "Play / pause  ·  space"
+              tooltipText: t("Play / pause  ·  space")
               onClicked: root.cliamp.playPause()
             }
 
             Button {
               iconText: "󰒭"
               foreground: root.foreground
-              tooltipText: "Next  ·  n"
+              tooltipText: t("Next  ·  n")
               onClicked: root.cliamp.next()
             }
 
             Button {
               iconText: "󰓛"
               foreground: root.foreground
-              tooltipText: "Stop"
+              tooltipText: t("Stop")
               onClicked: root.cliamp.stop()
             }
 
@@ -1473,7 +1778,7 @@ BorderSurface {
               iconText: "󰒟"
               foreground: root.foreground
               selected: root.cliamp && root.cliamp.shuffle
-              tooltipText: "Shuffle"
+              tooltipText: t("Shuffle")
               onClicked: root.cliamp.setShuffle(!root.cliamp.shuffle)
             }
 
@@ -1481,14 +1786,14 @@ BorderSurface {
               iconText: "󰑖"
               foreground: root.foreground
               selected: root.cliamp && root.cliamp.repeat !== "Off"
-              tooltipText: "Repeat · " + (root.cliamp ? root.cliamp.repeat : "")
+              tooltipText: t("Repeat · ") + (root.cliamp ? root.cliamp.repeat : "")
               onClicked: root.cliamp.setRepeat(root.cliamp.repeat.toLowerCase() === "off" ? "all" : root.cliamp.repeat.toLowerCase() === "all" ? "one" : "off")
             }
 
             Button {
               iconText: "󰝞"
               foreground: root.foreground
-              tooltipText: "Quieter  ·  −"
+              tooltipText: t("Quieter  ·  −")
               onClicked: root.cliamp.adjustVolume(-1)
             }
 
@@ -1504,7 +1809,7 @@ BorderSurface {
             Button {
               iconText: "󰝝"
               foreground: root.foreground
-              tooltipText: "Louder  ·  +"
+              tooltipText: t("Louder  ·  +")
               onClicked: root.cliamp.adjustVolume(1)
             }
           }
@@ -1531,7 +1836,7 @@ BorderSurface {
           spacing: Style.space(14)
 
           Text {
-            text: "Keyboard"
+            text: t("Keyboard")
             color: root.foreground
             font.family: root.fontFamily
             font.pixelSize: Style.font.title
@@ -1547,20 +1852,20 @@ BorderSurface {
 
             Repeater {
               model: [
-                {key: "↑ ↓ · PgUp PgDn", label: "Move through the list"},
-                {key: "Home · End", label: "First / last entry"},
-                {key: "⏎", label: "Play, or open a show"},
-                {key: "⇧⏎ · right-click", label: "Queue next instead"},
-                {key: "f", label: "Favorite station / subscribe to show"},
-                {key: "Del", label: "Remove from the queue"},
-                {key: "/", label: "Search this section"},
-                {key: "Esc · Backspace", label: "Back, then close"},
-                {key: "Tab · 1…7", label: "Switch section"},
-                {key: "Space", label: "Play / pause"},
-                {key: "n · p", label: "Next / previous track"},
-                {key: "+ · −", label: "Volume by 1 dB"},
-                {key: "← · →", label: "Seek 10s (when seekable)"},
-                {key: "?", label: "This help"}
+                {key: "↑ ↓ · PgUp PgDn", label: t("Move through the list")},
+                {key: "Home · End", label: t("First / last entry")},
+                {key: "⏎", label: t("Play, or open a show")},
+                {key: "⇧⏎ · right-click", label: t("Queue next instead")},
+                {key: "f", label: t("Favorite station / subscribe to show")},
+                {key: "Del", label: t("Remove from the queue")},
+                {key: "/", label: t("Search this section")},
+                {key: "Esc · Backspace", label: t("Back, then close")},
+                {key: "Tab · 1…7", label: t("Switch section")},
+                {key: "Space", label: t("Play / pause")},
+                {key: "n · p", label: t("Next / previous track")},
+                {key: "+ · −", label: t("Volume by 1 dB")},
+                {key: "← · →", label: t("Seek 10s (when seekable)")},
+                {key: "?", label: t("This help")}
               ]
 
               Row {
@@ -1596,7 +1901,7 @@ BorderSurface {
           }
 
           Text {
-            text: "Any key closes this."
+            text: t("Any key closes this.")
             color: root.subdued
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption

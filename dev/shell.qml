@@ -38,6 +38,8 @@ ShellRoot {
     property string trackTitle: "SomaFM Bossa Beyond"
     property string trackArtist: "Rosalia De Souza"
     property string station: "SomaFM Bossa Beyond"
+    property string artUrl: ""
+    property bool paused: false
     property real position: 59
     property real duration: 0
     property bool seekable: false
@@ -152,6 +154,10 @@ ShellRoot {
 
     function enter(): void {
       app.activate(app.currentRow, false)
+    }
+
+    function star(): void {
+      app.toggleFavorite(null)
     }
 
     function help(on: bool): void {

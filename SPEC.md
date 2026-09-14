@@ -26,8 +26,11 @@ What the plugin promises, in the order a person meets it.
 8. `⏎` plays a playable row and opens a container row (a show, a topic, a
    country). `⇧⏎` queues instead of playing. `Esc` goes back one level, then
    closes.
-9. A section that is loading says so; one that is empty says why it is empty and
-   what to press; one that failed shows the failure rather than an empty list.
+9. A section that is loading draws placeholder rows in the shape of the list
+   that is coming; one that is empty says why it is empty and what to press;
+   one that failed shows the failure rather than an empty list.
+9b. Drilling in leaves a breadcrumb. Every crumb is clickable and goes straight
+   to that level, not one step at a time.
 10. Searching asks the section's own source: cliamp's providers for Radio,
     Podcasts and Files; Radio Browser plus the ARD Audiothek for Broadcast.
 
@@ -54,6 +57,9 @@ What the plugin promises, in the order a person meets it.
 17. If cliamp is not running when something is asked of it, the plugin starts it
     headless, retries the call, and notifies once. Background polling never
     starts it.
+17b. The window is a floating overlay or an ordinary window, and the bar shows
+    the title or just the spectrum. Both are chosen in Settings and remembered
+    in the plugin's own state file — never by rewriting shell.json.
 18. Pausing, seeking, volume, EQ, speed, shuffle, repeat and the device are the
     running cliamp's — the TUI sees every change immediately, because there is
     one instance.

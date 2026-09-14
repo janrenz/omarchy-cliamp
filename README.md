@@ -23,14 +23,25 @@ views of one instance, so pausing here pauses there.
 
 ![Every key, on ?](showcase-keys.png)
 
+In the bar, playing and paused — the same five bars, morphed:
+
+![The bar while something plays](showcase-bar-playing.png)
+![The bar, paused](showcase-bar-paused.png)
+
 ## What it does
 
 - **Bar widget** — the track title, scrolling, with cliamp's spectrum beside it.
   Paused morphs the spectrum into a pause glyph rather than swapping in a
-  different icon. Click opens the library; middle-click skips; the wheel moves
-  through the queue; right-click keeps the small MPRIS popup.
+  different icon. A click brings up a card with the track, the transport and the
+  two ways on — the library window and its settings. Middle-click skips; the
+  wheel moves through the queue.
+- **Or just the spectrum** — Settings → **Spectrum only** drops the title, leaving five
+  bars and a tenth of the width. The title then comes back while the pointer
+  rests there, and the card with it, because the click belongs to what you can
+  see: it plays and pauses. Right-click opens the card at once, in either shape.
 - **Library window** — radio, podcasts, live radio worldwide, your files, the
-  queue, history, settings. Keyboard-first, mouse-complete.
+  queue, history, settings. Keyboard-first, mouse-complete, with a breadcrumb
+  that says where a drilled-in list came from and gets you back in one click.
 - **Broadcast, wherever you are** — live stations for your country via the
   [Radio Browser](https://www.radio-browser.info/) directory, with the country
   detected from your timezone and switchable in the list. Where a public
@@ -106,13 +117,28 @@ beyond the widget entry that `omarchy plugin enable` and `remove` manage.
 | `Ctrl+←` `Ctrl+→` | Seek 10s, where the source can seek |
 | `?` | Every key, in the window |
 
+## English and German
+
+The interface follows your system language: German on a `de_*` locale, English
+everywhere else. Settings → **LANGUAGE** overrides it, and the window redraws in
+place rather than reopening.
+
+English is the source language — it is what stands in the code, and an
+untranslated string falls back to it rather than to an empty label.
+`src/Texte.js` holds the German; `dev/test-texte.js` fails if something shown
+has no entry there, including the hints that are looked up at runtime.
+
+Not translated: what cliamp and the directories send back. Station names,
+podcast titles, equaliser preset names and repeat modes are values, not text —
+the preset name goes back to cliamp exactly as it arrived.
+
 ## Overlay or window
 
 By default the library is a floating overlay: it sits above everything and
 closes when you click away from it. Settings → **Window** switches it to an
 ordinary window instead — one Hyprland tiles, keeps on its workspace, and leaves
-open beside your terminal. In that shape, clicking the bar widget again focuses
-the window you already have rather than opening a second one.
+open beside your terminal. In that shape, asking for the window again focuses
+the one you already have rather than opening a second one.
 
 ## One socket
 

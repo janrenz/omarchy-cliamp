@@ -7,3 +7,5 @@ cd "$(dirname "$0")"
 
 node test-model.js
 node test-adapters.js
+node test-focus.js
+node test-texte.js

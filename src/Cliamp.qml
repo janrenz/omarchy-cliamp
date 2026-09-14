@@ -31,6 +31,7 @@ Item {
 
   readonly property string playbackState: snapshot.state || "stopped"
   readonly property bool playing: playbackState === "playing"
+  readonly property bool paused: playbackState === "paused"
   readonly property var track: snapshot.track || ({})
   readonly property var logicalTrack: snapshot.logical_track || ({})
   readonly property string streamTitle: track.stream_title || ""
@@ -92,7 +93,7 @@ Item {
       if (request.handler) request.handler(null, null)
       return
     }
-    if (request.tries >= 2) {
+    if (request.tries >= 3) {
       if (request.handler) request.handler(null, null)
       root.callFailed(request.operation, "cliamp is not reachable")
       return
@@ -160,9 +161,17 @@ Item {
         onStreamFinished: {
           var payload = null
           try {
-            payload = JSON.parse(text || "{}")
+            payload = JSON.parse(text || "")
           } catch (e) {
-            // Not JSON: cliamp is not listening on its socket.
+            payload = null
+          }
+
+          // A cliamp that is not listening writes to stderr, exits 1, and
+          // leaves stdout empty. Parsing `text || "{}"` turned that into a
+          // perfectly valid empty object, which read as a successful call with
+          // nothing in it - so the daemon was never started and the window sat
+          // on "loading…". Require the envelope cliamp actually sends.
+          if (!payload || payload.version !== 2) {
             root.requeue(proc.request)
             Qt.callLater(proc.destroy)
             return
@@ -216,7 +225,7 @@ Item {
 
   Timer {
     id: retryTimer
-    interval: 1400
+    interval: 1800
     onTriggered: {
       var queued = root.retryQueue
       root.retryQueue = []
