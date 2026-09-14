@@ -101,6 +101,16 @@ section, whose adapters really do call their APIs.
 - **An animation owns the property it animates.** The scrolling title's
   `NumberAnimation on x` leaves `x` where it stopped, so the label is put back
   by hand when it stops — otherwise a paused title sits off-screen.
+- **Quickshell rewrites its own argv** to a bare `/usr/bin/quickshell`, so no
+  `pkill` pattern can find a previous harness. Kill it with its own CLI:
+  `qs -p "$STAGE/shell.qml" kill`, and check what is running with
+  `qs list --all`. Every script here does; leaving instances behind is how a
+  laptop ends up out of memory with five idle QML engines on it.
+- **The harness maps a real window.** `QT_QPA_PLATFORM=offscreen` is set, and
+  Quickshell connects to Wayland anyway once a `FloatingWindow` is declared, so
+  `dev/run.sh` gives that window a title of its own and moves it to a special
+  workspace. Screenshots come from `grabToImage`, which does not need the
+  window to be on screen at all.
 - **The harness caches compiled QML.** `dev/run.sh` sets
   `QML_DISABLE_DISK_CACHE=1`; without it an edit to a staged file appears to do
   nothing, because the stage's paths never change.

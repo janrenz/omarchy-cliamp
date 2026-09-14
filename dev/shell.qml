@@ -116,6 +116,9 @@ ShellRoot {
 
   FloatingWindow {
     id: window
+    // A title of its own, so run.sh can put this window somewhere nobody is
+    // looking without guessing at which "quickshell" window it owns.
+    title: "cliamp-harness"
     implicitWidth: 1100
     implicitHeight: 760
     color: Color.menu.background
@@ -138,6 +141,21 @@ ShellRoot {
 
     function section(name: string): void {
       app.selectSection(name)
+    }
+
+    // Enough control to pose a screenshot without a keyboard: the showcase
+    // script drives these, so the images in the README are reproducible
+    // rather than whatever was on screen the day someone took them.
+    function move(steps: int): void {
+      app.move(steps)
+    }
+
+    function enter(): void {
+      app.activate(app.currentRow, false)
+    }
+
+    function help(on: bool): void {
+      app.helpOpen = on
     }
 
     function shot(path: string): void {

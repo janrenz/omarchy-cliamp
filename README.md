@@ -8,7 +8,20 @@ The plugin does not play anything itself. cliamp is the engine; this is a second
 face for it, over cliamp's v2 IPC. The terminal player and this window are two
 views of one instance, so pausing here pauses there.
 
-![the library window](preview.png)
+![Broadcast: live radio for your country, with the ARD Audiothek folded in](preview.png)
+
+<table>
+<tr>
+<td><img src="showcase-podcasts.png" alt="Podcast charts"></td>
+<td><img src="showcase-episodes.png" alt="A show's episodes, with play, queue-next and star on the row"></td>
+</tr>
+<tr>
+<td><img src="showcase-queue.png" alt="The live queue"></td>
+<td><img src="showcase-settings.png" alt="Settings: output device, equalizer, playback, discovery, window shape and session"></td>
+</tr>
+</table>
+
+![Every key, on ?](showcase-keys.png)
 
 ## What it does
 
@@ -93,6 +106,14 @@ beyond the widget entry that `omarchy plugin enable` and `remove` manage.
 | `Ctrl+←` `Ctrl+→` | Seek 10s, where the source can seek |
 | `?` | Every key, in the window |
 
+## Overlay or window
+
+By default the library is a floating overlay: it sits above everything and
+closes when you click away from it. Settings → **Window** switches it to an
+ordinary window instead — one Hyprland tiles, keeps on its workspace, and leaves
+open beside your terminal. In that shape, clicking the bar widget again focuses
+the window you already have rather than opening a second one.
+
 ## One socket
 
 Only one cliamp can hold its socket. If the plugin started a background player
@@ -103,9 +124,11 @@ the background player and opens the terminal one on the current track.
 ## Developing
 
 ```sh
-dev/test.sh          # the tests
-dev/run.sh           # the window, on fixtures, rendered offscreen
-dev/shot.sh out.png  # photograph what the harness is drawing
+dev/test.sh           # the tests
+dev/run.sh            # the window, on fixtures, in a harness of its own
+dev/shot.sh out.png   # photograph what the harness is drawing
+dev/showcase.sh       # regenerate every screenshot in this file
+dev/shot-bar.sh       # the two bar states, from the real bar
 ```
 
 See [AGENTS.md](AGENTS.md) for how it is put together.

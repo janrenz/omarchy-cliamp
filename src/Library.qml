@@ -21,7 +21,13 @@ Item {
 
   property QtObject bar: null
   property var cliamp: null
+  property var prefs: null
   property bool opened: false
+
+  // The window is App.qml's business: the library asks, rather than closing a
+  // surface it does not own.
+  signal closeRequested()
+  signal windowModeRequested(string mode)
 
   // Browsing stack: each level is {title, rows}. The top level is whatever the
   // current section last loaded.
@@ -83,6 +89,7 @@ Item {
     root.opened = false
     root.helpOpen = false
     if (root.cliamp) root.cliamp.live = false
+    root.closeRequested()
   }
 
   function toggle() { root.opened ? root.close() : root.open() }
@@ -387,6 +394,8 @@ Item {
     if (number < 1 || number > root.sections.length) return
     root.selectSection(root.sections[number - 1].key)
   }
+
+  Component.onCompleted: if (root.opened) root.open()
 
   Favorites {
     id: favorites
@@ -831,7 +840,7 @@ BorderSurface {
                   }
 
                   Button {
-                    iconText: "󰾵"
+                    iconText: "󰲹"
                     foreground: root.foreground
                     visible: (rowMouse.containsMouse || rowSurface.current)
                              && ["track", "episode", "live", "queued"].indexOf(modelData.kind) >= 0
@@ -917,286 +926,353 @@ BorderSurface {
           contentHeight: settingsColumn.implicitHeight
           boundsBehavior: Flickable.StopAtBounds
 
-          Column {
+          // Two columns, because one made the pane taller than the window and
+          // put the last group below a fold nothing announced.
+          Row {
             id: settingsColumn
             width: parent.width
-            spacing: Style.space(18)
+            spacing: Style.space(24)
 
-            // Output
             Column {
-              width: parent.width
-              spacing: Style.space(8)
+              width: (parent.width - Style.space(24)) / 2
+              spacing: Style.space(18)
 
-              Text {
-                text: "OUTPUT"
-                color: root.subdued
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-                font.bold: true
-                font.letterSpacing: 1.2
-                textFormat: Text.PlainText
-              }
-
-              Repeater {
-                model: root.devices
-
-                Rectangle {
-                  width: settingsColumn.width
-                  height: Style.space(34)
-                  radius: Style.spacing.labelGap
-                  readonly property bool active: modelData.active === true || modelData.current === true || modelData.name === root.activeDevice
-                  color: active ? root.selectedBackground : (deviceMouse.containsMouse ? root.faint : "transparent")
-
-                  Text {
-                    anchors.left: parent.left
-                    anchors.leftMargin: Style.space(10)
-                    anchors.right: parent.right
-                    anchors.rightMargin: Style.space(10)
-                    anchors.verticalCenter: parent.verticalCenter
-                    text: (parent.active ? "󰄬  " : "    ") + (modelData.description || modelData.name || "")
-                    color: parent.active ? root.selectedText : root.foreground
-                    font.family: root.fontFamily
-                    font.pixelSize: Style.font.body
-                    elide: Text.ElideRight
-                    textFormat: Text.PlainText
-                  }
-
-                  MouseArea {
-                    id: deviceMouse
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                      root.activeDevice = modelData.name
-                      root.cliamp.call("device", {name: modelData.name}, function () { root.loadSettings() })
-                    }
-                  }
-                }
-              }
-            }
-
-            // Equalizer
-            Column {
-              width: parent.width
-              spacing: Style.space(8)
-
-              Text {
-                text: "EQUALIZER" + (root.cliamp && root.cliamp.eqPreset ? " · " + root.cliamp.eqPreset : "")
-                color: root.subdued
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-                font.bold: true
-                font.letterSpacing: 1.2
-                textFormat: Text.PlainText
-              }
-
-              Flow {
+              // Output
+              Column {
                 width: parent.width
-                spacing: Style.space(6)
+                spacing: Style.space(8)
 
-                Repeater {
-                  model: ["Flat", "Rock", "Pop", "Jazz", "Classical", "Bass", "Treble", "Vocal", "Electronic", "Acoustic"]
-
-                  Button {
-                    text: modelData
-                    bordered: true
-                    foreground: root.foreground
-                    selected: root.cliamp && root.cliamp.eqPreset === modelData
-                    onClicked: root.cliamp.setEqPreset(modelData)
-                  }
+                Text {
+                  text: "OUTPUT"
+                  color: root.subdued
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.2
+                  textFormat: Text.PlainText
                 }
-              }
-
-              // Band readout, so a preset is not just a name.
-              Row {
-                height: Style.space(40)
-                spacing: Style.space(6)
 
                 Repeater {
-                  model: root.cliamp ? root.cliamp.eqBands : []
+                  model: root.devices
 
                   Rectangle {
-                    width: Style.space(16)
-                    height: Style.space(40)
-                    radius: Style.space(3)
-                    color: root.faint
+                    width: settingsColumn.width
+                    height: Style.space(34)
+                    radius: Style.spacing.labelGap
+                    readonly property bool active: modelData.active === true || modelData.current === true || modelData.name === root.activeDevice
+                    color: active ? root.selectedBackground : (deviceMouse.containsMouse ? root.faint : "transparent")
 
-                    Rectangle {
-                      anchors.bottom: parent.bottom
-                      anchors.bottomMargin: Style.space(20) + Math.min(0, modelData) * Style.space(1.5)
-                      width: parent.width
-                      height: Math.max(2, Math.abs(modelData) * Style.space(1.5))
-                      radius: Style.space(3)
-                      color: Color.accent
+                    Text {
+                      anchors.left: parent.left
+                      anchors.leftMargin: Style.space(10)
+                      anchors.right: parent.right
+                      anchors.rightMargin: Style.space(10)
+                      anchors.verticalCenter: parent.verticalCenter
+                      text: (parent.active ? "󰄬  " : "    ") + (modelData.description || modelData.name || "")
+                      color: parent.active ? root.selectedText : root.foreground
+                      font.family: root.fontFamily
+                      font.pixelSize: Style.font.body
+                      elide: Text.ElideRight
+                      textFormat: Text.PlainText
+                    }
+
+                    MouseArea {
+                      id: deviceMouse
+                      anchors.fill: parent
+                      hoverEnabled: true
+                      cursorShape: Qt.PointingHandCursor
+                      onClicked: {
+                        root.activeDevice = modelData.name
+                        root.cliamp.call("device", {name: modelData.name}, function () { root.loadSettings() })
+                      }
                     }
                   }
                 }
               }
-            }
 
-            // Playback
-            Column {
-              width: parent.width
-              spacing: Style.space(8)
-
-              Text {
-                text: "PLAYBACK"
-                color: root.subdued
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-                font.bold: true
-                font.letterSpacing: 1.2
-                textFormat: Text.PlainText
-              }
-
-              Row {
-                spacing: Style.space(6)
-
-                Repeater {
-                  model: [0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
-
-                  Button {
-                    text: modelData + "×"
-                    bordered: true
-                    foreground: root.foreground
-                    selected: root.cliamp && Math.abs(root.cliamp.speed - modelData) < 0.01
-                    onClicked: root.cliamp.setSpeed(modelData)
-                  }
-                }
-              }
-
-              Row {
-                spacing: Style.space(6)
-
-                Repeater {
-                  model: ["off", "all", "one"]
-
-                  Button {
-                    text: "repeat " + modelData
-                    bordered: true
-                    foreground: root.foreground
-                    selected: root.cliamp && root.cliamp.repeat.toLowerCase() === modelData
-                    onClicked: root.cliamp.setRepeat(modelData)
-                  }
-                }
-
-                Button {
-                  text: "shuffle"
-                  bordered: true
-                  foreground: root.foreground
-                  selected: root.cliamp && root.cliamp.shuffle
-                  onClicked: root.cliamp.setShuffle(!root.cliamp.shuffle)
-                }
-
-                Button {
-                  text: "mono"
-                  bordered: true
-                  foreground: root.foreground
-                  selected: root.cliamp && root.cliamp.mono
-                  onClicked: root.cliamp.call("mono", {name: root.cliamp.mono ? "off" : "on"}, null)
-                }
-
-                Button {
-                  text: "spectrum"
-                  bordered: true
-                  foreground: root.foreground
-                  selected: root.spectrumEnabled
-                  onClicked: root.spectrumEnabled = !root.spectrumEnabled
-                }
-              }
-            }
-
-            // Discovery
-            Column {
-              width: parent.width
-              spacing: Style.space(8)
-
-              Text {
-                text: "DISCOVERY"
-                color: root.subdued
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-                font.bold: true
-                font.letterSpacing: 1.2
-                textFormat: Text.PlainText
-              }
-
-              Row {
+              // Equalizer
+              Column {
+                width: parent.width
                 spacing: Style.space(8)
 
-                Button {
-                  text: "Broadcast country · " + (root.countryName || root.country)
-                  bordered: true
-                  foreground: root.foreground
-                  onClicked: {
-                    root.selectSection("broadcast")
-                    root.openCountryPicker()
+                Text {
+                  text: "EQUALIZER" + (root.cliamp && root.cliamp.eqPreset ? " · " + root.cliamp.eqPreset : "")
+                  color: root.subdued
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.2
+                  textFormat: Text.PlainText
+                }
+
+                Flow {
+                  width: parent.width
+                  spacing: Style.space(6)
+
+                  Repeater {
+                    model: ["Flat", "Rock", "Pop", "Jazz", "Classical", "Bass", "Treble", "Vocal", "Electronic", "Acoustic"]
+
+                    Button {
+                      text: modelData
+                      bordered: true
+                      foreground: root.foreground
+                      selected: root.cliamp && root.cliamp.eqPreset === modelData
+                      onClicked: root.cliamp.setEqPreset(modelData)
+                    }
+                  }
+                }
+
+                // Band readout, so a preset is not just a name: bars grow up from
+                // the zero line for a boost and down for a cut.
+                Row {
+                  height: Style.space(44)
+                  spacing: Style.space(6)
+
+                  Repeater {
+                    model: root.cliamp ? root.cliamp.eqBands : []
+
+                    Rectangle {
+                      width: Style.space(16)
+                      height: Style.space(44)
+                      radius: Style.space(3)
+                      color: root.faint
+
+                      Rectangle {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        y: parent.height / 2
+                        height: 1
+                        color: root.subdued
+                        opacity: 0.45
+                      }
+
+                      Rectangle {
+                        readonly property real span: Math.min(1, Math.abs(modelData) / 12)
+                        width: parent.width
+                        height: Math.max(2, span * (parent.height / 2 - Style.space(2)))
+                        y: modelData >= 0 ? parent.height / 2 - height : parent.height / 2
+                        radius: Style.space(3)
+                        color: Color.accent
+                        opacity: modelData === 0 ? 0.35 : 0.9
+                      }
+                    }
                   }
                 }
               }
 
-              Text {
+              // Playback
+              Column {
                 width: parent.width
-                text: "Detected from your timezone. Podcast charts follow cliamp's own setting in ~/.config/cliamp/config.toml."
-                color: root.subdued
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-                wrapMode: Text.WordWrap
-                textFormat: Text.PlainText
-              }
-            }
-
-            // Session
-            Column {
-              width: parent.width
-              spacing: Style.space(8)
-
-              Text {
-                text: "SESSION"
-                color: root.subdued
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-                font.bold: true
-                font.letterSpacing: 1.2
-                textFormat: Text.PlainText
-              }
-
-              Row {
                 spacing: Style.space(8)
 
-                Button {
-                  text: "Hand over to terminal"
-                  bordered: true
-                  foreground: root.foreground
-                  onClicked: {
-                    root.cliamp.handOffToTerminal()
-                    root.close()
+                Text {
+                  text: "PLAYBACK"
+                  color: root.subdued
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.2
+                  textFormat: Text.PlainText
+                }
+
+                Row {
+                  spacing: Style.space(6)
+
+                  Repeater {
+                    model: [0.75, 1.0, 1.25, 1.5, 1.75, 2.0]
+
+                    Button {
+                      text: modelData + "×"
+                      bordered: true
+                      foreground: root.foreground
+                      selected: root.cliamp && Math.abs(root.cliamp.speed - modelData) < 0.01
+                      onClicked: root.cliamp.setSpeed(modelData)
+                    }
                   }
                 }
 
-                Button {
-                  text: "Reconnect"
-                  bordered: true
-                  foreground: root.foreground
-                  onClicked: root.cliamp.refresh()
-                }
-              }
+                Row {
+                  spacing: Style.space(6)
 
-              Text {
-                width: parent.width
-                text: "Only one cliamp can hold the socket. Handing over stops the background player and opens the terminal one on the current track."
-                color: root.subdued
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.caption
-                wrapMode: Text.WordWrap
-                textFormat: Text.PlainText
+                  Repeater {
+                    model: ["off", "all", "one"]
+
+                    Button {
+                      text: "repeat " + modelData
+                      bordered: true
+                      foreground: root.foreground
+                      selected: root.cliamp && root.cliamp.repeat.toLowerCase() === modelData
+                      onClicked: root.cliamp.setRepeat(modelData)
+                    }
+                  }
+
+                  Button {
+                    text: "shuffle"
+                    bordered: true
+                    foreground: root.foreground
+                    selected: root.cliamp && root.cliamp.shuffle
+                    onClicked: root.cliamp.setShuffle(!root.cliamp.shuffle)
+                  }
+
+                  Button {
+                    text: "mono"
+                    bordered: true
+                    foreground: root.foreground
+                    selected: root.cliamp && root.cliamp.mono
+                    onClicked: root.cliamp.call("mono", {name: root.cliamp.mono ? "off" : "on"}, null)
+                  }
+
+                  Button {
+                    text: "spectrum"
+                    bordered: true
+                    foreground: root.foreground
+                    selected: root.spectrumEnabled
+                    onClicked: root.spectrumEnabled = !root.spectrumEnabled
+                  }
+                }
               }
             }
 
-            Item { width: 1; height: Style.space(8) }
+            Column {
+              width: (parent.width - Style.space(24)) / 2
+              spacing: Style.space(18)
+
+              // Discovery
+              Column {
+                width: parent.width
+                spacing: Style.space(8)
+
+                Text {
+                  text: "DISCOVERY"
+                  color: root.subdued
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.2
+                  textFormat: Text.PlainText
+                }
+
+                Row {
+                  spacing: Style.space(8)
+
+                  Button {
+                    text: "Broadcast country · " + (root.countryName || root.country)
+                    bordered: true
+                    foreground: root.foreground
+                    onClicked: {
+                      root.selectSection("broadcast")
+                      root.openCountryPicker()
+                    }
+                  }
+                }
+
+                Text {
+                  width: parent.width
+                  text: "Detected from your timezone. Podcast charts follow cliamp's own setting in ~/.config/cliamp/config.toml."
+                  color: root.subdued
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  wrapMode: Text.WordWrap
+                  textFormat: Text.PlainText
+                }
+              }
+
+              // Window
+              Column {
+                width: parent.width
+                spacing: Style.space(8)
+
+                Text {
+                  text: "WINDOW"
+                  color: root.subdued
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.2
+                  textFormat: Text.PlainText
+                }
+
+                Row {
+                  spacing: Style.space(6)
+
+                  Button {
+                    text: "Floating overlay"
+                    bordered: true
+                    foreground: root.foreground
+                    selected: !root.prefs || root.prefs.windowMode === "overlay"
+                    onClicked: root.windowModeRequested("overlay")
+                  }
+
+                  Button {
+                    text: "Normal window"
+                    bordered: true
+                    foreground: root.foreground
+                    selected: root.prefs && root.prefs.windowMode === "window"
+                    onClicked: root.windowModeRequested("window")
+                  }
+                }
+
+                Text {
+                  width: parent.width
+                  text: "An overlay sits above everything and closes when you click away from it. A normal window is one Hyprland tiles and keeps on its workspace \u2014 opening it again focuses the one you have rather than making a second. Switching reopens the window."
+                  color: root.subdued
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  wrapMode: Text.WordWrap
+                  textFormat: Text.PlainText
+                }
+              }
+
+              // Session
+              Column {
+                width: parent.width
+                spacing: Style.space(8)
+
+                Text {
+                  text: "SESSION"
+                  color: root.subdued
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.2
+                  textFormat: Text.PlainText
+                }
+
+                Row {
+                  spacing: Style.space(8)
+
+                  Button {
+                    text: "Hand over to terminal"
+                    bordered: true
+                    foreground: root.foreground
+                    onClicked: {
+                      root.cliamp.handOffToTerminal()
+                      root.close()
+                    }
+                  }
+
+                  Button {
+                    text: "Reconnect"
+                    bordered: true
+                    foreground: root.foreground
+                    onClicked: root.cliamp.refresh()
+                  }
+                }
+
+                Text {
+                  width: parent.width
+                  text: "Only one cliamp can hold the socket. Handing over stops the background player and opens the terminal one on the current track."
+                  color: root.subdued
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  wrapMode: Text.WordWrap
+                  textFormat: Text.PlainText
+                }
+              }
+            }
+          }
           }
         }
-      }
 
       // ---- key hints --------------------------------------------------------
       Row {
