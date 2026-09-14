@@ -166,6 +166,12 @@ Item {
 
     Loader {
       active: overlay.visible
+      // Loader ist ein Fokusbereich: ohne dieses focus bekommt nichts darin je
+      // den Tastaturfokus, und der keyCatcher der Library sieht keine Taste —
+      // kein Escape, kein /, keine Pfeile. Nicht forceActiveFocus auf item:
+      // das setzte den Fokus auf die Wurzel der Library und nähme ihn dem
+      // Fänger darin wieder weg.
+      focus: true
       anchors.centerIn: parent
       width: Math.min(Style.space(1100), overlay.width - Style.gapsOut * 2)
       height: Math.min(Style.space(760), overlay.height - Style.gapsOut * 2)
@@ -204,6 +210,12 @@ Item {
 
     Loader {
       active: stacked.visible
+      // Loader ist ein Fokusbereich: ohne dieses focus bekommt nichts darin je
+      // den Tastaturfokus, und der keyCatcher der Library sieht keine Taste —
+      // kein Escape, kein /, keine Pfeile. Nicht forceActiveFocus auf item:
+      // das setzte den Fokus auf die Wurzel der Library und nähme ihn dem
+      // Fänger darin wieder weg.
+      focus: true
       anchors.fill: parent
       sourceComponent: libraryComponent
     }
