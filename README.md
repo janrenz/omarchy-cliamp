@@ -34,9 +34,10 @@ views of one instance, so pausing here pauses there.
 
 ## Requires
 
-- **[cliamp](https://github.com/bjarneo/cliamp)** on `PATH` — the player this
-  drives. `omarchy pkg add cliamp`, or build it from the AUR. Nothing here plays
-  audio on its own.
+- **[cliamp](https://github.com/bjarneo/cliamp)** — the player this drives.
+  Omarchy installs it as part of its base packages, so on a stock system there
+  is nothing to install. Elsewhere: `omarchy pkg add cliamp`, or the AUR.
+  Nothing here plays audio on its own.
 - **Quickshell**, which Omarchy already ships as its shell.
 - **Network access**, for the Broadcast section only: it reads
   [Radio Browser](https://www.radio-browser.info/) and, in Germany, the
