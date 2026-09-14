@@ -326,8 +326,7 @@ BarWidget {
         spacing: Style.space(6)
 
         Button {
-          iconText: "󰐊"
-          label: "Fenster öffnen"
+          text: "Fenster öffnen"
           foreground: root.bar.foreground
           horizontalPadding: Style.spacing.controlPaddingX
           verticalPadding: Style.spacing.controlPaddingY
@@ -339,7 +338,7 @@ BarWidget {
 
         Button {
           iconText: "󰒓"
-          label: "Einstellungen"
+          text: "Einstellungen"
           foreground: root.bar.foreground
           horizontalPadding: Style.spacing.controlPaddingX
           verticalPadding: Style.spacing.controlPaddingY
@@ -361,20 +360,23 @@ BarWidget {
           foreground: root.bar.foreground
           horizontalPadding: Style.spacing.controlPaddingX
           verticalPadding: Style.spacing.controlPaddingY
-          enabled: root.activePlayer && root.activePlayer.canGoPrevious
+          enabled: cliamp.connected || (root.activePlayer && root.activePlayer.canGoPrevious)
           opacity: enabled ? 1.0 : 0.4
-          onClicked: if (root.mediaService) root.mediaService.runAction("previous", false, root.mediaService.playerKey(root.activePlayer))
+          onClicked: {
+            if (root.activePlayer && root.mediaService) root.mediaService.runAction("previous", false, root.mediaService.playerKey(root.activePlayer))
+            else cliamp.previous()
+          }
         }
 
         Button {
-          iconText: root.activePlayer && root.activePlayer.isPlaying ? "󰏤" : "󰐊"
+          iconText: root.isPlaying ? "󰏤" : "󰐊"
           foreground: root.bar.foreground
           horizontalPadding: Style.spacing.panelGap
           verticalPadding: Style.spacing.controlPaddingY
           iconSize: Style.font.iconLarge
-          enabled: root.activePlayer && (root.activePlayer.canTogglePlaying || root.activePlayer.canPlay || root.activePlayer.canPause)
+          enabled: cliamp.connected || (root.activePlayer && (root.activePlayer.canTogglePlaying || root.activePlayer.canPlay || root.activePlayer.canPause))
           opacity: enabled ? 1.0 : 0.4
-          onClicked: if (root.mediaService) root.mediaService.runAction("playPause", false, root.mediaService.playerKey(root.activePlayer))
+          onClicked: root.playPause()
         }
 
         Button {
@@ -382,9 +384,12 @@ BarWidget {
           foreground: root.bar.foreground
           horizontalPadding: Style.spacing.controlPaddingX
           verticalPadding: Style.spacing.controlPaddingY
-          enabled: root.activePlayer && root.activePlayer.canGoNext
+          enabled: cliamp.connected || (root.activePlayer && root.activePlayer.canGoNext)
           opacity: enabled ? 1.0 : 0.4
-          onClicked: if (root.mediaService) root.mediaService.runAction("next", false, root.mediaService.playerKey(root.activePlayer))
+          onClicked: {
+            if (root.activePlayer && root.mediaService) root.mediaService.runAction("next", false, root.mediaService.playerKey(root.activePlayer))
+            else cliamp.next()
+          }
         }
       }
 
