@@ -18,6 +18,15 @@ Item {
   // spectrum and nothing else — the same information, a tenth of the width.
   property bool showTitle: true
 
+  // "auto" folgt der Systemsprache, "de" und "en" setzen sie fest. Die
+  // aufgelöste Sprache steht in `sprache` — die Oberfläche fragt nur die, und
+  // weil es eine Eigenschaft ist, zeichnet ein Wechsel alles neu.
+  property string language: "auto"
+
+  readonly property string sprache: root.language === "de" || root.language === "en"
+      ? root.language
+      : (Qt.locale().name.substring(0, 2) === "de" ? "de" : "en")
+
   readonly property string directory: Quickshell.env("HOME") + "/.local/state/omarchy/cliamp-media"
   readonly property string path: root.directory + "/settings.json"
 
@@ -34,6 +43,13 @@ Item {
     root.save()
   }
 
+  function setLanguage(lang) {
+    if (lang !== "auto" && lang !== "de" && lang !== "en") return
+    if (lang === root.language) return
+    root.language = lang
+    root.save()
+  }
+
   function load(raw) {
     var parsed = null
     try {
@@ -44,10 +60,13 @@ Item {
     var mode = parsed && parsed.windowMode
     root.windowMode = (mode === "window" || mode === "overlay") ? mode : "overlay"
     root.showTitle = !parsed || parsed.showTitle !== false
+    var lang = parsed && parsed.language
+    root.language = (lang === "de" || lang === "en") ? lang : "auto"
   }
 
   function save() {
-    file.setText(JSON.stringify({version: 1, windowMode: root.windowMode, showTitle: root.showTitle}, null, 2) + "\n")
+    file.setText(JSON.stringify({version: 1, windowMode: root.windowMode, showTitle: root.showTitle,
+                                 language: root.language}, null, 2) + "\n")
   }
 
   Component.onCompleted: mkdirProc.running = true

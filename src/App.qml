@@ -109,6 +109,9 @@ Item {
       onBarTitleRequested: function (show) {
         if (root.prefs) root.prefs.setShowTitle(show)
       }
+      onLanguageRequested: function (lang) {
+        if (root.prefs) root.prefs.setLanguage(lang)
+      }
       onWindowModeRequested: function (mode) {
         if (root.prefs) root.prefs.setWindowMode(mode)
         root.opened = false

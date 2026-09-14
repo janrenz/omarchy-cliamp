@@ -5,6 +5,7 @@ import Quickshell.Io
 import qs.Ui
 import qs.Commons
 import "Model.js" as Model
+import "Texte.js" as Texte
 import "Ard.js" as Ard
 import "RadioBrowser.js" as RadioBrowser
 
@@ -29,6 +30,7 @@ Item {
   signal closeRequested()
   signal windowModeRequested(string mode)
   signal barTitleRequested(bool show)
+  signal languageRequested(string lang)
 
   // Browsing stack: each level is {title, rows}. The top level is whatever the
   // current section last loaded.
@@ -52,15 +54,22 @@ Item {
   property var devices: []
   property string activeDevice: ""
 
+  // Jeder sichtbare Text läuft hier durch. Die Funktion liest prefs.sprache,
+  // und weil das eine Eigenschaft ist, zeichnen sich alle Bindungen neu, sobald
+  // die Sprache umgestellt wird — ohne das Fenster neu zu bauen.
+  function t(text) {
+    return Texte.t(text, root.prefs ? root.prefs.sprache : "en")
+  }
+
   readonly property var sections: [
-    {key: "favorites", label: "Favorites", icon: "󰓒", hint: "Everything you starred"},
-    {key: "radio", label: "Radio", icon: "󰐹", hint: "cliamp's own station list"},
-    {key: "podcast", label: "Podcasts", icon: "󰦔", hint: "Apple directory and RSS"},
-    {key: "broadcast", label: "Broadcast", icon: "󰜟", hint: "Live radio worldwide"},
-    {key: "local", label: "Files", icon: "󰉋", hint: "Saved and local playlists"},
-    {key: "queue", label: "Queue", icon: "󰲹", hint: "What plays next"},
-    {key: "history", label: "History", icon: "󰄉", hint: "Recently played"},
-    {key: "settings", label: "Settings", icon: "󰒓", hint: "Output, sound, session"}
+    {key: "favorites", label: t("Favorites"), icon: "󰓒", hint: t("Everything you starred")},
+    {key: "radio", label: t("Radio"), icon: "󰐹", hint: t("cliamp's own station list")},
+    {key: "podcast", label: t("Podcasts"), icon: "󰦔", hint: t("Apple directory and RSS")},
+    {key: "broadcast", label: t("Broadcast"), icon: "󰜟", hint: t("Live radio worldwide")},
+    {key: "local", label: t("Files"), icon: "󰉋", hint: t("Saved and local playlists")},
+    {key: "queue", label: t("Queue"), icon: "󰲹", hint: t("What plays next")},
+    {key: "history", label: t("History"), icon: "󰄉", hint: t("Recently played")},
+    {key: "settings", label: t("Settings"), icon: "󰒓", hint: t("Output, sound, session")}
   ]
 
   readonly property color background: Color.menu.background
@@ -227,10 +236,10 @@ Item {
     RadioBrowser.topStations(root.country, 60, function (stations) {
       var rows = [{
         kind: "country-picker",
-        title: "Country · " + (root.countryName || root.country),
+        title: t("Country · ") + (root.countryName || root.country),
         subtitle: "Pick where the dial starts",
         art: ""
-      }, root.headerRow("Top stations · " + root.country)].concat(stations)
+      }, root.headerRow(t("Top stations · ") + root.country)].concat(stations)
 
       if (!root.publicCatalog) {
         root.setRows("Broadcast", rows)
@@ -363,14 +372,14 @@ Item {
     if (root.section === "broadcast") {
       RadioBrowser.search(query, root.country, 40, function (stations) {
         if (!root.publicCatalog) {
-          root.push("Broadcast · " + query, stations)
+          root.push(t("Broadcast · ") + query, stations)
           return
         }
         Ard.search(query, 25, function (shows) {
           var rows = [root.headerRow("Stations")].concat(stations)
             .concat([root.headerRow("ARD Audiothek")]).concat(shows)
           root.push("Broadcast · " + query, rows)
-        }, function () { root.push("Broadcast · " + query, stations) })
+        }, function () { root.push(t("Broadcast · ") + query, stations) })
       }, root.fail)
       return
     }
@@ -599,9 +608,9 @@ BorderSurface {
             Text {
               id: statusText
               anchors.centerIn: parent
-              text: root.loading ? "loading…"
+              text: root.loading ? t("loading…")
                   : root.error ? root.error
-                  : root.listSection ? root.visibleRows.length + (root.visibleRows.length === 1 ? " item" : " items") : ""
+                  : root.listSection ? root.visibleRows.length + (root.visibleRows.length === 1 ? t(" item") : t(" items")) : ""
               color: root.error ? Color.urgent : root.subdued
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
@@ -616,11 +625,11 @@ BorderSurface {
           anchors.verticalCenter: parent.verticalCenter
           width: Style.space(320)
           foreground: root.foreground
-          placeholderText: root.section === "broadcast" ? "Search stations and shows…"
-                         : root.section === "podcast" ? "Search podcasts…"
-                         : root.section === "radio" ? "Search stations…"
-                         : root.section === "local" ? "Search your library…"
-                         : "Filter…"
+          placeholderText: root.section === "broadcast" ? t("Search stations and shows…")
+                         : root.section === "podcast" ? t("Search podcasts…")
+                         : root.section === "radio" ? t("Search stations…")
+                         : root.section === "local" ? t("Search your library…")
+                         : t("Filter…")
           visible: root.listSection
           onTextChanged: {
             if (root.section === "queue" || root.section === "history") root.filter = text
@@ -716,8 +725,8 @@ BorderSurface {
           Text {
             width: sidebar.width
             text: root.cliamp && root.cliamp.connected
-                ? (root.cliamp.daemonOwned ? "󰄬  cliamp · background" : "󰄬  cliamp · connected")
-                : "󰅖  cliamp · offline"
+                ? (root.cliamp.daemonOwned ? t("󰄬  cliamp · background") : t("󰄬  cliamp · connected"))
+                : t("󰅖  cliamp · offline")
             color: root.subdued
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption
@@ -927,7 +936,7 @@ BorderSurface {
                     foreground: root.foreground
                     opacity: rowMouse.containsMouse || rowSurface.current ? 1.0 : 0.0
                     visible: opacity > 0
-                    tooltipText: "Play  ·  ⏎"
+                    tooltipText: t("Play  ·  ⏎")
                     onClicked: root.activate(modelData, false)
 
                     Behavior on opacity {
@@ -941,7 +950,7 @@ BorderSurface {
                     opacity: (rowMouse.containsMouse || rowSurface.current)
                              && ["track", "episode", "live", "queued"].indexOf(modelData.kind) >= 0 ? 1.0 : 0.0
                     visible: opacity > 0
-                    tooltipText: "Play next  ·  ⇧⏎"
+                    tooltipText: t("Play next  ·  ⇧⏎")
                     onClicked: root.activate(modelData, true)
 
                     Behavior on opacity {
@@ -955,7 +964,7 @@ BorderSurface {
                     opacity: !favorites.canStar(modelData) ? 0.0
                              : (favorites.starred(modelData) || rowMouse.containsMouse || rowSurface.current ? 1.0 : 0.0)
                     visible: opacity > 0
-                    tooltipText: favorites.starred(modelData) ? "Remove star  ·  f" : "Star  ·  f"
+                    tooltipText: favorites.starred(modelData) ? t("Remove star  ·  f") : t("Star  ·  f")
                     onClicked: root.toggleFavorite(modelData)
 
                     Behavior on opacity {
@@ -1060,12 +1069,12 @@ BorderSurface {
             Text {
               anchors.horizontalCenter: parent.horizontalCenter
               text: root.error ? root.error
-                  : root.filter ? "Nothing matches this filter."
-                  : root.section === "favorites" ? "Nothing starred yet. Press f on a station, a show or an episode and it lands here."
-                  : root.section === "queue" ? "The queue is empty. Play something from Radio or Broadcast."
-                  : root.section === "history" ? "Nothing played yet."
-                  : root.section === "local" ? "No saved playlists yet. cliamp's playlist command makes them."
-                  : "Nothing here yet. Press / to search."
+                  : root.filter ? t("Nothing matches this filter.")
+                  : root.section === "favorites" ? t("Nothing starred yet. Press f on a station, a show or an episode and it lands here.")
+                  : root.section === "queue" ? t("The queue is empty. Play something from Radio or Broadcast.")
+                  : root.section === "history" ? t("Nothing played yet.")
+                  : root.section === "local" ? t("No saved playlists yet. cliamp's playlist command makes them.")
+                  : t("Nothing here yet. Press / to search.")
               width: Math.min(Style.space(420), parent.parent.width - Style.space(60))
               horizontalAlignment: Text.AlignHCenter
               wrapMode: Text.WordWrap
@@ -1117,7 +1126,7 @@ BorderSurface {
                 spacing: Style.space(8)
 
                 Text {
-                  text: "OUTPUT"
+                  text: t("OUTPUT")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1170,7 +1179,7 @@ BorderSurface {
                 spacing: Style.space(8)
 
                 Text {
-                  text: "EQUALIZER" + (root.cliamp && root.cliamp.eqPreset ? " · " + root.cliamp.eqPreset : "")
+                  text: t("EQUALIZER") + (root.cliamp && root.cliamp.eqPreset ? " · " + root.cliamp.eqPreset : "")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1240,7 +1249,7 @@ BorderSurface {
                 spacing: Style.space(8)
 
                 Text {
-                  text: "PLAYBACK"
+                  text: t("PLAYBACK")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1274,7 +1283,7 @@ BorderSurface {
                     model: ["off", "all", "one"]
 
                     Button {
-                      text: "repeat " + modelData
+                      text: t("repeat ") + modelData
                       bordered: true
                       foreground: root.foreground
                       selected: root.cliamp && root.cliamp.repeat.toLowerCase() === modelData
@@ -1283,7 +1292,7 @@ BorderSurface {
                   }
 
                   Button {
-                    text: "shuffle"
+                    text: t("shuffle")
                     bordered: true
                     foreground: root.foreground
                     selected: root.cliamp && root.cliamp.shuffle
@@ -1291,7 +1300,7 @@ BorderSurface {
                   }
 
                   Button {
-                    text: "mono"
+                    text: t("mono")
                     bordered: true
                     foreground: root.foreground
                     selected: root.cliamp && root.cliamp.mono
@@ -1299,7 +1308,7 @@ BorderSurface {
                   }
 
                   Button {
-                    text: "spectrum"
+                    text: t("spectrum")
                     bordered: true
                     foreground: root.foreground
                     selected: root.spectrumEnabled
@@ -1319,7 +1328,7 @@ BorderSurface {
                 spacing: Style.space(8)
 
                 Text {
-                  text: "DISCOVERY"
+                  text: t("DISCOVERY")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1333,7 +1342,7 @@ BorderSurface {
                   spacing: Style.space(8)
 
                   Button {
-                    text: "Broadcast country · " + (root.countryName || root.country)
+                    text: t("Broadcast country · ") + (root.countryName || root.country)
                     bordered: true
                     foreground: root.foreground
                     onClicked: {
@@ -1345,7 +1354,7 @@ BorderSurface {
 
                 Text {
                   width: parent.width
-                  text: "Detected from your timezone. Podcast charts follow cliamp's own setting in ~/.config/cliamp/config.toml."
+                  text: t("Detected from your timezone. Podcast charts follow cliamp's own setting in ~/.config/cliamp/config.toml.")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1360,7 +1369,7 @@ BorderSurface {
                 spacing: Style.space(8)
 
                 Text {
-                  text: "WINDOW"
+                  text: t("WINDOW")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1374,7 +1383,7 @@ BorderSurface {
                   spacing: Style.space(6)
 
                   Button {
-                    text: "Floating overlay"
+                    text: t("Floating overlay")
                     bordered: true
                     foreground: root.foreground
                     selected: !root.prefs || root.prefs.windowMode === "overlay"
@@ -1382,7 +1391,7 @@ BorderSurface {
                   }
 
                   Button {
-                    text: "Normal window"
+                    text: t("Normal window")
                     bordered: true
                     foreground: root.foreground
                     selected: root.prefs && root.prefs.windowMode === "window"
@@ -1395,7 +1404,7 @@ BorderSurface {
                   spacing: Style.space(6)
 
                   Button {
-                    text: "Title in the bar"
+                    text: t("Title in the bar")
                     bordered: true
                     foreground: root.foreground
                     selected: !root.prefs || root.prefs.showTitle
@@ -1403,7 +1412,7 @@ BorderSurface {
                   }
 
                   Button {
-                    text: "Spectrum only"
+                    text: t("Spectrum only")
                     bordered: true
                     foreground: root.foreground
                     selected: root.prefs && !root.prefs.showTitle
@@ -1413,7 +1422,62 @@ BorderSurface {
 
                 Text {
                   width: parent.width
-                  text: "An overlay sits above everything and closes when you click away from it. A normal window is one Hyprland tiles and keeps on its workspace \u2014 opening it again focuses the one you have rather than making a second. Switching reopens the window. The bar can show what is playing or just the spectrum — with the title gone, clicking it plays and pauses, and the card comes up while you rest on it."
+                  text: t("An overlay sits above everything and closes when you click away from it. A normal window is one Hyprland tiles and keeps on its workspace \u2014 opening it again focuses the one you have rather than making a second. Switching reopens the window. The bar can show what is playing or just the spectrum — with the title gone, clicking it plays and pauses, and the card comes up while you rest on it.")
+                  color: root.subdued
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  wrapMode: Text.WordWrap
+                  textFormat: Text.PlainText
+                }
+              }
+
+              // Language
+              Column {
+                width: parent.width
+                spacing: Style.space(8)
+
+                Text {
+                  text: t("LANGUAGE")
+                  color: root.subdued
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  font.bold: true
+                  font.letterSpacing: 1.2
+                  textFormat: Text.PlainText
+                }
+
+                Flow {
+                  width: parent.width
+                  spacing: Style.space(6)
+
+                  Button {
+                    text: t("System")
+                    bordered: true
+                    foreground: root.foreground
+                    selected: !root.prefs || root.prefs.language === "auto"
+                    onClicked: root.languageRequested("auto")
+                  }
+
+                  Button {
+                    text: t("English")
+                    bordered: true
+                    foreground: root.foreground
+                    selected: root.prefs && root.prefs.language === "en"
+                    onClicked: root.languageRequested("en")
+                  }
+
+                  Button {
+                    text: t("German")
+                    bordered: true
+                    foreground: root.foreground
+                    selected: root.prefs && root.prefs.language === "de"
+                    onClicked: root.languageRequested("de")
+                  }
+                }
+
+                Text {
+                  width: parent.width
+                  text: t("The interface follows your system language unless you pick one here.")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1428,7 +1492,7 @@ BorderSurface {
                 spacing: Style.space(8)
 
                 Text {
-                  text: "SESSION"
+                  text: t("SESSION")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1442,7 +1506,7 @@ BorderSurface {
                   spacing: Style.space(8)
 
                   Button {
-                    text: "Hand over to terminal"
+                    text: t("Hand over to terminal")
                     bordered: true
                     foreground: root.foreground
                     onClicked: {
@@ -1452,7 +1516,7 @@ BorderSurface {
                   }
 
                   Button {
-                    text: "Reconnect"
+                    text: t("Reconnect")
                     bordered: true
                     foreground: root.foreground
                     onClicked: root.cliamp.refresh()
@@ -1461,7 +1525,7 @@ BorderSurface {
 
                 Text {
                   width: parent.width
-                  text: "Only one cliamp can hold the socket. Handing over stops the background player and opens the terminal one on the current track."
+                  text: t("Only one cliamp can hold the socket. Handing over stops the background player and opens the terminal one on the current track.")
                   color: root.subdued
                   font.family: root.fontFamily
                   font.pixelSize: Style.font.caption
@@ -1510,7 +1574,7 @@ BorderSurface {
 
             Text {
               anchors.verticalCenter: parent.verticalCenter
-              text: modelData.label
+              text: t(modelData.label)
               color: root.subdued
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
@@ -1585,7 +1649,7 @@ BorderSurface {
 
             Text {
               width: parent.width
-              text: root.cliamp ? (root.cliamp.streamTitle || root.cliamp.trackTitle || "Nothing playing") : ""
+              text: root.cliamp ? (root.cliamp.streamTitle || root.cliamp.trackTitle || t("Nothing playing")) : ""
               color: root.foreground
               font.family: root.fontFamily
               font.pixelSize: Style.font.body
@@ -1685,28 +1749,28 @@ BorderSurface {
             Button {
               iconText: "󰒮"
               foreground: root.foreground
-              tooltipText: "Previous  ·  p"
+              tooltipText: t("Previous  ·  p")
               onClicked: root.cliamp.previous()
             }
 
             Button {
               iconText: root.cliamp && root.cliamp.playing ? "󰏤" : "󰐊"
               foreground: root.foreground
-              tooltipText: "Play / pause  ·  space"
+              tooltipText: t("Play / pause  ·  space")
               onClicked: root.cliamp.playPause()
             }
 
             Button {
               iconText: "󰒭"
               foreground: root.foreground
-              tooltipText: "Next  ·  n"
+              tooltipText: t("Next  ·  n")
               onClicked: root.cliamp.next()
             }
 
             Button {
               iconText: "󰓛"
               foreground: root.foreground
-              tooltipText: "Stop"
+              tooltipText: t("Stop")
               onClicked: root.cliamp.stop()
             }
 
@@ -1714,7 +1778,7 @@ BorderSurface {
               iconText: "󰒟"
               foreground: root.foreground
               selected: root.cliamp && root.cliamp.shuffle
-              tooltipText: "Shuffle"
+              tooltipText: t("Shuffle")
               onClicked: root.cliamp.setShuffle(!root.cliamp.shuffle)
             }
 
@@ -1722,14 +1786,14 @@ BorderSurface {
               iconText: "󰑖"
               foreground: root.foreground
               selected: root.cliamp && root.cliamp.repeat !== "Off"
-              tooltipText: "Repeat · " + (root.cliamp ? root.cliamp.repeat : "")
+              tooltipText: t("Repeat · ") + (root.cliamp ? root.cliamp.repeat : "")
               onClicked: root.cliamp.setRepeat(root.cliamp.repeat.toLowerCase() === "off" ? "all" : root.cliamp.repeat.toLowerCase() === "all" ? "one" : "off")
             }
 
             Button {
               iconText: "󰝞"
               foreground: root.foreground
-              tooltipText: "Quieter  ·  −"
+              tooltipText: t("Quieter  ·  −")
               onClicked: root.cliamp.adjustVolume(-1)
             }
 
@@ -1745,7 +1809,7 @@ BorderSurface {
             Button {
               iconText: "󰝝"
               foreground: root.foreground
-              tooltipText: "Louder  ·  +"
+              tooltipText: t("Louder  ·  +")
               onClicked: root.cliamp.adjustVolume(1)
             }
           }
@@ -1772,7 +1836,7 @@ BorderSurface {
           spacing: Style.space(14)
 
           Text {
-            text: "Keyboard"
+            text: t("Keyboard")
             color: root.foreground
             font.family: root.fontFamily
             font.pixelSize: Style.font.title
@@ -1788,20 +1852,20 @@ BorderSurface {
 
             Repeater {
               model: [
-                {key: "↑ ↓ · PgUp PgDn", label: "Move through the list"},
-                {key: "Home · End", label: "First / last entry"},
-                {key: "⏎", label: "Play, or open a show"},
-                {key: "⇧⏎ · right-click", label: "Queue next instead"},
-                {key: "f", label: "Favorite station / subscribe to show"},
-                {key: "Del", label: "Remove from the queue"},
-                {key: "/", label: "Search this section"},
-                {key: "Esc · Backspace", label: "Back, then close"},
-                {key: "Tab · 1…7", label: "Switch section"},
-                {key: "Space", label: "Play / pause"},
-                {key: "n · p", label: "Next / previous track"},
-                {key: "+ · −", label: "Volume by 1 dB"},
-                {key: "← · →", label: "Seek 10s (when seekable)"},
-                {key: "?", label: "This help"}
+                {key: "↑ ↓ · PgUp PgDn", label: t("Move through the list")},
+                {key: "Home · End", label: t("First / last entry")},
+                {key: "⏎", label: t("Play, or open a show")},
+                {key: "⇧⏎ · right-click", label: t("Queue next instead")},
+                {key: "f", label: t("Favorite station / subscribe to show")},
+                {key: "Del", label: t("Remove from the queue")},
+                {key: "/", label: t("Search this section")},
+                {key: "Esc · Backspace", label: t("Back, then close")},
+                {key: "Tab · 1…7", label: t("Switch section")},
+                {key: "Space", label: t("Play / pause")},
+                {key: "n · p", label: t("Next / previous track")},
+                {key: "+ · −", label: t("Volume by 1 dB")},
+                {key: "← · →", label: t("Seek 10s (when seekable)")},
+                {key: "?", label: t("This help")}
               ]
 
               Row {
@@ -1837,7 +1901,7 @@ BorderSurface {
           }
 
           Text {
-            text: "Any key closes this."
+            text: t("Any key closes this.")
             color: root.subdued
             font.family: root.fontFamily
             font.pixelSize: Style.font.caption

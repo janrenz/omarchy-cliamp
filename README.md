@@ -117,6 +117,21 @@ beyond the widget entry that `omarchy plugin enable` and `remove` manage.
 | `Ctrl+←` `Ctrl+→` | Seek 10s, where the source can seek |
 | `?` | Every key, in the window |
 
+## English and German
+
+The interface follows your system language: German on a `de_*` locale, English
+everywhere else. Settings → **LANGUAGE** overrides it, and the window redraws in
+place rather than reopening.
+
+English is the source language — it is what stands in the code, and an
+untranslated string falls back to it rather than to an empty label.
+`src/Texte.js` holds the German; `dev/test-texte.js` fails if something shown
+has no entry there, including the hints that are looked up at runtime.
+
+Not translated: what cliamp and the directories send back. Station names,
+podcast titles, equaliser preset names and repeat modes are values, not text —
+the preset name goes back to cliamp exactly as it arrived.
+
 ## Overlay or window
 
 By default the library is a floating overlay: it sits above everything and

@@ -5,7 +5,7 @@
   "version": "0.1.0",
   "author": "Jan Renz",
   "license": "MIT",
-  "description": "A window for cliamp, the terminal music player Omarchy already installs: radio, podcasts, live radio for your country, and your queue \u2014 with cliamp's own spectrum in the bar. Starts cliamp headless when nothing is playing yet, so the bar works whether or not a terminal player is open. No account, no API key, no setup.",
+  "description": "A window for cliamp, the terminal music player Omarchy already installs: radio, podcasts, live radio for your country, and your queue \u2014 with cliamp's own spectrum in the bar. Starts cliamp headless when nothing is playing yet, so the bar works whether or not a terminal player is open. English and German. No account, no API key, no setup.",
   "kinds": [
     "service",
     "bar-widget"

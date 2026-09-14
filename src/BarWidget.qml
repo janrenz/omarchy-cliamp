@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import qs.Ui
 import qs.Commons
+import "Texte.js" as Texte
 
 BarWidget {
   id: root
@@ -52,6 +53,10 @@ BarWidget {
   readonly property bool titelSichtbar: !root.bar.vertical
       && root.title !== ""
       && (prefs.showTitle || root.hovered)
+
+  function t(text) {
+    return Texte.t(text, prefs ? prefs.sprache : "en")
+  }
 
   function close() {
     popupOpen = false
@@ -199,7 +204,7 @@ BarWidget {
         id: labelText
         textFormat: Text.PlainText
         text: root.isPlaying ? (root.title + (root.artist ? "  ·  " + root.artist : ""))
-                             : (root.hasMedia ? "Paused" : "")
+                             : (root.hasMedia ? t("Paused") : "")
         color: root.bar.barForeground
         font.family: root.bar.fontFamily
         font.pixelSize: Style.font.body
@@ -326,7 +331,7 @@ BarWidget {
 
           Text {
             textFormat: Text.PlainText
-            text: root.title || "Nothing playing"
+            text: root.title || t("Nothing playing")
             color: root.bar.foreground
             font.family: root.bar.fontFamily
             font.pixelSize: Style.font.subtitle
@@ -367,7 +372,7 @@ BarWidget {
         spacing: Style.space(6)
 
         Button {
-          text: "Open window"
+          text: t("Open window")
           foreground: root.bar.foreground
           horizontalPadding: Style.spacing.controlPaddingX
           verticalPadding: Style.spacing.controlPaddingY
@@ -379,7 +384,7 @@ BarWidget {
 
         Button {
           iconText: "󰒓"
-          text: "Settings"
+          text: t("Settings")
           foreground: root.bar.foreground
           horizontalPadding: Style.spacing.controlPaddingX
           verticalPadding: Style.spacing.controlPaddingY
@@ -433,7 +438,7 @@ BarWidget {
             Text {
               anchors.verticalCenter: parent.verticalCenter
               textFormat: Text.PlainText
-              text: tastenZeile.modelData.was
+              text: t(tastenZeile.modelData.was)
               color: Qt.darker(root.bar.foreground, 1.4)
               font.family: root.bar.fontFamily
               font.pixelSize: Style.font.caption
@@ -507,7 +512,7 @@ BarWidget {
             readonly property var player: modelData
             readonly property bool selected: root.activePlayer && player
               && root.mediaService.playerKey(root.activePlayer) === root.mediaService.playerKey(player)
-            readonly property string sourceTitle: player ? (player.trackTitle || player.identity || player.desktopEntry || "Media source") : "Media source"
+            readonly property string sourceTitle: player ? (player.trackTitle || player.identity || player.desktopEntry || t("Media source")) : t("Media source")
             readonly property string sourceDetail: player && player.trackArtist ? player.trackArtist : (player && player.identity ? player.identity : "")
 
             width: sourceList.width
