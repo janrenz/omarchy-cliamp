@@ -32,13 +32,47 @@ views of one instance, so pausing here pauses there.
 - **Works with no terminal open** — if cliamp is not running when you ask for
   something, the plugin starts it headless (`cliamp --daemon`) and says so once.
 
+## Requires
+
+- **[cliamp](https://github.com/bjarneo/cliamp)** on `PATH` — the player this
+  drives. `omarchy pkg add cliamp`, or build it from the AUR. Nothing here plays
+  audio on its own.
+- **Quickshell**, which Omarchy already ships as its shell.
+- **Network access**, for the Broadcast section only: it reads
+  [Radio Browser](https://www.radio-browser.info/) and, in Germany, the
+  [ARD Audiothek](https://api.ardaudiothek.de). Radio, Podcasts, Files, Queue
+  and History go through cliamp and talk to nothing else.
+
+No account, no API key, no configuration file of its own beyond the stars it
+writes to `~/.local/state/omarchy/cliamp-media/favorites.json`.
+
 ## Install
 
 ```sh
 omarchy plugin add https://github.com/janrenz/omarchy-cliamp --enable
 ```
 
-Needs `cliamp` on `PATH` (`omarchy pkg add cliamp`, or the AUR). Nothing else.
+`--enable` puts the widget in the bar's left section. Without it, enable the
+widget later from `omarchy menu plugin` or with
+`omarchy plugin enable janrenz.omarchy.cliamp --section left`.
+
+## Remove
+
+```sh
+omarchy plugin remove janrenz.omarchy.cliamp
+```
+
+That takes the widget out of the bar and deletes the plugin. Two things outlive
+it, both on purpose and both yours to delete:
+
+```sh
+rm -rf ~/.local/state/omarchy/cliamp-media   # the stars
+pkill -f '^cliamp --daemon'                  # a background player it started
+```
+
+cliamp itself is a separate package and is left alone — `omarchy pkg remove
+cliamp` if you want that gone too. The plugin never edits your `shell.json`
+beyond the widget entry that `omarchy plugin enable` and `remove` manage.
 
 ## Keys
 
