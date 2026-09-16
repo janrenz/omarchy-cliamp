@@ -107,6 +107,7 @@ var DE = {
   "Play, or open a show": "Abspielen oder Sendung öffnen",
   "Play / pause": "Play / Pause",
   "This help": "Diese Hilfe",
+  "What the keyboard does": "Was die Tastatur kann",
 
   // ---- Einstellungen ------------------------------------------------------
   "OUTPUT": "AUSGABE",

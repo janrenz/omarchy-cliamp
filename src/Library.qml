@@ -1812,6 +1812,17 @@ BorderSurface {
               tooltipText: t("Louder  ·  +")
               onClicked: root.cliamp.adjustVolume(1)
             }
+
+            // The keyboard, listed. ? has opened it since this was written,
+            // which is exactly the problem: nothing on screen said so. Last in
+            // the transport row, where the other things one reaches for live.
+            Button {
+              text: "?"
+              foreground: root.subdued
+              selected: root.helpOpen
+              tooltipText: t("What the keyboard does")
+              onClicked: root.helpOpen = !root.helpOpen
+            }
           }
         }
       }
